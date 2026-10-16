@@ -157,6 +157,35 @@ begin
     res := res || E'OK: el rol anónimo no puede leer registros\n';
   end;
 
+  -- ----- 8. Triggers con usuarios del panel y funciones fuera de la API -----
+  perform set_config('request.jwt.claims', json_build_object('sub', ua, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', ua::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    update public.empleados set nombre = 'Empleado 1 editado' where id = e1;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    res := res || case when n = 1 then E'OK: dueño edita un empleado (triggers funcionan con permisos revocados)\n'
+                       else E'FALLA: el dueño no pudo editar un empleado\n' end;
+  exception when others then
+    execute 'reset role';
+    res := res || format(E'FALLA: editar empleado como dueño dio error: %s\n', sqlerrm);
+  end;
+
+  select count(*) into n from public.bitacora
+   where tabla = 'empleados' and fila_id = e1 and accion = 'UPDATE' and actor = ua;
+  res := res || case when n = 1 then E'OK: la bitácora registró la edición con el usuario\n'
+                     else format(E'FALLA: bitácora tiene %s filas para la edición, se esperaba 1\n', n) end;
+
+  res := res || case when to_regprocedure('public.tiene_rol(uuid, public.rol_miembro[])') is null
+                          and to_regprocedure('private.tiene_rol(uuid, public.rol_miembro[])') is not null
+                     then E'OK: funciones de apoyo en el esquema private (fuera de la API)\n'
+                     else E'FALLA: las funciones de apoyo siguen en public\n' end;
+
+  res := res || case when not has_function_privilege('authenticated', 'public.fn_bitacora()', 'execute')
+                     then E'OK: fn_bitacora no es ejecutable por usuarios\n'
+                     else E'FALLA: fn_bitacora sigue ejecutable por usuarios\n' end;
+
   -- Fin: se lanza una excepción para revertir todo y mostrar el informe.
   raise exception E'INFORME DE LA PRUEBA (todo fue revertido; no quedó ningún dato):\n%\nResultado: %',
     res, case when res like '%FALLA%' then 'HAY FALLAS' else 'TODO OK' end;
