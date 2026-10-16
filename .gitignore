@@ -1,0 +1,19 @@
+# Secretos: nunca se suben (tokens de Meta, llaves de Supabase, contraseñas de base de datos)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/
+
+# Dependencias y entornos locales
+node_modules/
+venv/
+__pycache__/
+
+# Sistema
+.DS_Store
+@eaDir/
