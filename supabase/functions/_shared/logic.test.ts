@@ -1,4 +1,4 @@
-// Ejecutar: node --test supabase/functions/whatsapp-webhook/tests/
+// Ejecutar: node --test supabase/functions/_shared/
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
@@ -15,7 +15,7 @@ import {
   sha256Hex,
   tipoUbicacion,
   ultimos10,
-} from "../lib/logic.ts";
+} from "./logic.ts";
 
 test("firma válida, inválida y ausente", async () => {
   const cuerpo = '{"hola":"mundo"}';

@@ -17,7 +17,7 @@ import {
   tipoUbicacion,
   type TipoRegistro,
   ultimos10,
-} from "./logic.ts";
+} from "../../_shared/logic.ts";
 import {
   descargarMedio,
   enviarBotones,

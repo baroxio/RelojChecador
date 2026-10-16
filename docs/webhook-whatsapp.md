@@ -2,13 +2,15 @@
 
 Decisión (2026-10-16): **un número de WhatsApp compartido** para todas las empresas. Cada empleado se vincula con un código de invitación; el esquema ya soporta también un número por cliente (`numeros_whatsapp.empresa_id`).
 
-Código: [`supabase/functions/whatsapp-webhook/`](../supabase/functions/whatsapp-webhook/)
+Código: [`supabase/functions/`](../supabase/functions/) (`whatsapp-webhook`, `crear-invitacion` y `_shared`). Pruebas: `node --test supabase/functions/_shared/logic.test.ts supabase/functions/_shared/invitacion.test.ts`
 
 ## Estado
 
 | Parte | Estado |
 |---|---|
-| `lib/logic.ts`: firma de Meta, lectura del payload, comandos, secuencia, señales de riesgo | **Probada**: 11 pruebas con Node (`logic.test.ts`), todas pasan |
+| `_shared/logic.ts`: firma de Meta, lectura del payload, comandos, secuencia, señales de riesgo | **Probada**: 11 pruebas con Node (`logic.test.ts`), todas pasan |
+| `_shared/invitacion.ts`: código, enlace `wa.me`, vigencia | **Probada**: 6 pruebas (`invitacion.test.ts`) |
+| `crear-invitacion/index.ts` | Probada la lógica de control con un doble de Supabase (permisos, errores, hash). **No** probada contra la base real |
 | `lib/flujo.ts`, `lib/whatsapp.ts`, `index.ts` | **Sin probar.** Solo se verificó que cargan sin error de sintaxis. No se han ejecutado contra Supabase ni contra Meta |
 | Formatos de la Cloud API (versión de Graph, botones, solicitud de ubicación, medios) | Escritos de memoria; **verificar con la documentación vigente de Meta** antes de desplegar |
 
@@ -39,6 +41,18 @@ Reglas ya implementadas:
 - **Señales de riesgo** (marcan, no bloquean): `secuencia_inusual`, `ubicacion_elegida`, `ubicacion_repetida`, `foto_repetida` (misma foto exacta por `sha256`), `cambio_numero_reciente`, `hora_desfasada`.
 - **Errores al procesar:** el mensaje queda con `estado = 'error'` y el webhook responde 200 para que Meta no reintente en bucle.
 
+## Invitaciones: `crear-invitacion`
+
+El panel llama `POST /functions/v1/crear-invitacion` con la sesión del usuario y `{ "empleado_id": "<uuid>" }`. Responde `{ codigo, enlace, expira_at, empleado }`.
+
+- Solo **dueño o administrador** de la empresa del empleado. Un empleado que el usuario no puede ver responde 404.
+- El **código** (8 símbolos, sin `0 1 I O`) se devuelve una sola vez; en la base solo se guarda su **hash sha-256**.
+- Vigencia de **72 horas**. Crear otra invitación invalida las pendientes de ese empleado.
+- El **enlace** es `https://wa.me/<número>?text=ALTA%20<código>`: abre WhatsApp con el mensaje listo. Usa el número propio de la empresa si existe, o el compartido. `numero_visible` debe guardarse con código de país.
+- El código solo funciona desde el teléfono dado de alta del empleado; para un cambio de número, primero se actualiza el teléfono y luego se invita de nuevo.
+- Queda una fila `INVITACION` en la bitácora.
+- Se despliega **con** verificación de JWT (a diferencia del webhook).
+
 ## Secretos que necesita la función
 
 | Variable | Qué es |
@@ -63,7 +77,7 @@ Para tener `supabase` CLI y `deno` hace falta una máquina con permisos; en el N
 
 ## Falta construir
 
-1. **Crear invitaciones:** nada genera aún el código y el enlace `wa.me/<número>?text=ALTA%20CODIGO` ni guarda su hash. Va con el panel o una función aparte.
+1. **Pantalla del panel** que llame a `crear-invitacion` y muestre el enlace o QR al administrador.
 2. **Reintentos:** un trabajo que retome los mensajes en `estado = 'error'` o `recibido` (hay un índice para eso).
 3. **Estados de entrega** (`statuses` de Meta): hoy se ignoran.
 4. **Plantillas** de recordatorio y alertas (fuera de la ventana de 24 horas) y su aprobación en Meta.

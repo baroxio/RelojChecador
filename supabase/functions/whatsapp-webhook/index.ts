@@ -3,7 +3,7 @@
 // (Meta no envía un JWT de Supabase; la autenticidad se comprueba con la firma X-Hub-Signature-256.)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { extraerMensajes, firmaValida } from "./lib/logic.ts";
+import { extraerMensajes, firmaValida } from "../_shared/logic.ts";
 import { procesarMensaje } from "./lib/flujo.ts";
 
 const db = createClient(
