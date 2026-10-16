@@ -4,7 +4,7 @@ Archivos: [`supabase/migrations/20261016000000_esquema_inicial.sql`](../supabase
 
 La tercera corrige los avisos del Security Advisor: mueve `btree_gist` al esquema `extensions` y las funciones de apoyo de RLS al esquema `private` (no expuesto por la API). `resolver_correccion` queda en `public` a propósito, porque el panel la llama y valida rol y alcance dentro; su aviso es esperado.
 
-**Estado (2026-10-16):** las dos migraciones se aplicaron en el proyecto RelojChecador de Supabase (SQL Editor) y [`supabase/tests/esquema_prueba.sql`](../supabase/tests/esquema_prueba.sql) dio **TODO OK** en las 16 verificaciones: inmutabilidad de registros, restricciones, aislamiento entre empresas, geocerca, correcciones, RLS por rol y acceso anónimo.
+**Estado (2026-10-16):** las dos migraciones se aplicaron en el proyecto RelojChecador de Supabase (SQL Editor) y [`supabase/tests/esquema_prueba.sql`](../supabase/tests/esquema_prueba.sql) dio **TODO OK** en las 20 verificaciones (tras aplicar también la migración de seguridad): inmutabilidad de registros, restricciones, aislamiento entre empresas, geocerca, correcciones, RLS por rol y acceso anónimo.
 
 Qué **no** cubre esa prueba: el bucket de selfies y su política, la bitácora, las columnas de consentimientos e invitaciones, y rendimiento con volumen. Pendiente revisar *Advisors* (Security) en Supabase.
 
