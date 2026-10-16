@@ -2,7 +2,9 @@
 
 Archivos: [`supabase/migrations/20261016000000_esquema_inicial.sql`](../supabase/migrations/20261016000000_esquema_inicial.sql) y [`20261016000100_storage_selfies.sql`](../supabase/migrations/20261016000100_storage_selfies.sql).
 
-**Estado:** el SQL pasa el análisis de sintaxis de Postgres (pglast). **No se ha ejecutado** contra una base real ni se ha aplicado al proyecto de Supabase.
+**Estado (2026-10-16):** las dos migraciones se aplicaron en el proyecto RelojChecador de Supabase (SQL Editor) y [`supabase/tests/esquema_prueba.sql`](../supabase/tests/esquema_prueba.sql) dio **TODO OK** en las 16 verificaciones: inmutabilidad de registros, restricciones, aislamiento entre empresas, geocerca, correcciones, RLS por rol y acceso anónimo.
+
+Qué **no** cubre esa prueba: el bucket de selfies y su política, la bitácora, las columnas de consentimientos e invitaciones, y rendimiento con volumen. Pendiente revisar *Advisors* (Security) en Supabase.
 
 ## Mapa
 
@@ -57,7 +59,7 @@ erDiagram
 
 ## Pendientes antes de aplicar
 
-1. Ejecutar la migración en una base real (por ejemplo `supabase start` en una máquina con Docker accesible) y probar: inmutabilidad, restricciones, vista y políticas RLS con usuarios de cada rol.
+1. Revisar *Advisors* (Security y Performance) del proyecto y probar el bucket `selfies` con una subida real desde el servidor.
 2. Revisar con la aplicación qué escritura necesita el panel además de la configuración.
 3. Definir el trabajo de purga por plazo de conservación (usa `set local reloj.permitir_purga = 'on'`).
 4. Validar la zona horaria de la sede en la aplicación (la base no la restringe).
