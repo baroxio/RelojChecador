@@ -69,7 +69,11 @@ El panel llama `POST /functions/v1/crear-invitacion` con la sesión del usuario 
 1. Crear la app en Meta for Developers, agregar WhatsApp, registrar y verificar el número, y crear un token de sistema.
 2. Insertar el número en `numeros_whatsapp` (`phone_number_id`, `waba_id`, `empresa_id` nulo por ser compartido).
 3. `supabase secrets set ...` con las variables de arriba.
-4. `supabase functions deploy whatsapp-webhook --no-verify-jwt`. Sin esa bandera Supabase rechazaría a Meta por no traer JWT.
+4. **Desplegar las funciones con GitHub Actions** (`.github/workflows/desplegar-funciones.yml`): al subir cambios de `supabase/functions` a `main`, primero corre las pruebas y, si pasan, despliega `whatsapp-webhook` (con `--no-verify-jwt`, porque Meta no manda JWT de Supabase) y `crear-invitacion` (con verificación de JWT). Requiere:
+   - Un **token de acceso de Supabase** (Supabase, Account, Access Tokens, Generate new token). Da acceso a toda tu cuenta de Supabase: guárdalo solo como secreto de GitHub y revócalo si se filtra.
+   - Guardarlo en GitHub como secreto del repo con el nombre `SUPABASE_ACCESS_TOKEN` (repo, Settings, Secrets and variables, Actions, New repository secret).
+   - Para subir el archivo del workflow, el token personal de GitHub que usas con `git push` necesita además el permiso **Workflows: Read and write**.
+   - También se puede lanzar a mano desde la pestaña Actions del repo (*Run workflow*).
 5. En Meta, configurar la URL del webhook (`https://<proyecto>.supabase.co/functions/v1/whatsapp-webhook`), el token de verificación y suscribirse al campo `messages`.
 6. Probar con un empleado de prueba.
 
