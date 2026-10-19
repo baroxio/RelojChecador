@@ -79,6 +79,19 @@ El panel llama `POST /functions/v1/crear-invitacion` con la sesión del usuario 
 
 Para tener `supabase` CLI y `deno` hace falta una máquina con permisos; en el NAS no hay Docker accesible ni Deno.
 
+## Lecciones de la primera prueba real (2026-10-19)
+
+Con el número de prueba de Meta y un empleado de prueba, el mensaje de un celular llegó al webhook y el bot respondió. Para llegar ahí hubo que resolver cuatro cosas que no están en la documentación obvia:
+
+1. **El token de verificación debe ser idéntico en Meta y en Supabase.** Meta respondió "couldn't be validated" hasta que se puso el mismo valor en los dos lados (se compara con el secreto `WHATSAPP_VERIFY_TOKEN`).
+2. **La cuenta de WhatsApp (WABA) debe estar suscrita a la app.** Suscribir el campo `messages` en la configuración del webhook no basta: Meta recibía los mensajes pero no los reenviaba. Se arregló con `POST /{waba-id}/subscribed_apps` usando el token de acceso. `GET /{waba-id}/subscribed_apps` muestra qué apps están suscritas; al principio solo estaba una app interna de Meta (`WA DevX Webhook Events`).
+3. **Móviles de México: Meta entrega `521` + 10 dígitos, pero el envío exige `52` + 10 dígitos.** Sin esa corrección, la API responde `(#131030) Recipient phone number not in allowed list`. Lo resuelve `destinoWhatsapp()` en `_shared/logic.ts`, con prueba.
+4. **Con la app sin publicar, Meta solo entrega webhooks de prueba.** La app se publicó (requirió una política de privacidad pública, en `docs/privacidad.html`, servida con GitHub Pages) y no se comprobó si hubiera funcionado sin publicarla.
+
+Datos útiles para depurar: la tabla `mensajes_whatsapp` guarda cada mensaje entrante con su `estado` y, si falla, el `error` completo; es más fiable que la pantalla de invocaciones de Supabase, que a veces no carga.
+
+Pendiente de probar de punta a punta: aceptar el aviso, registrar entrada con ubicación y selfie, y el rechazo fuera de la geocerca.
+
 ## Falta construir
 
 1. **Pantalla del panel** que llame a `crear-invitacion` y muestre el enlace o QR al administrador.
