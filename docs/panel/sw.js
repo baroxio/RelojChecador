@@ -1,6 +1,6 @@
 // Service worker del panel: deja abrir la app sin internet y avisa de las versiones nuevas.
 // Sube VERSION en cada cambio del panel: así el navegador detecta la actualización.
-const VERSION = "2026.10.19-2";
+const VERSION = "2026.10.19-3";
 const CACHE = `rc-panel-${VERSION}`;
 const ARCHIVOS = [
   "./", "index.html", "styles.css", "main.js", "ui.js", "logic.js", "config.js",

@@ -5,6 +5,7 @@ import {
   enlaceMensajeEmpleado, etiquetaSenal, fechaLocal, formatearDistancia, formatearDuracion,
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
+  NOMBRES_DIA, ZONAS_HORARIAS_MX, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
 } from "./logic.js";
 
 const SVG = (d, relleno = false) =>
@@ -584,7 +585,40 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           } catch (err) { avisar(mensajeDeError(err), "error"); baja.disabled = false; }
         } }, "Dar de baja");
       acciones.append(invitar, baja);
-      cuerpo.replaceChildren(acciones, zonaInvitacion);
+      const zonaHorario = h("div", { style: "margin-top:.75rem" }, h("p", { class: "nota" }, "Cargando horario…"));
+      cuerpo.replaceChildren(zonaHorario, acciones, zonaInvitacion);
+      pintarHorarioEmpleado(e, zonaHorario);
+    }
+
+    async function pintarHorarioEmpleado(e, zonaH) {
+      try {
+        const hoy = fechaLocal(new Date(), tzPorSede()[e.sede_id] ?? "America/Mexico_City");
+        const [horarios, dias, asignaciones] = await Promise.all([
+          q(sb.from("horarios").select("id,nombre").eq("empresa_id", eid()).order("nombre")),
+          q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada,hora_salida")),
+          q(sb.from("empleado_horarios").select("id,horario_id,vigencia").eq("empleado_id", e.id)),
+        ]);
+        const vigente = asignaciones.find((a) => { const v = parsearVigencia(a.vigencia); return v && (!v.desde || v.desde <= hoy) && (!v.hasta || v.hasta > hoy); });
+        if (!horarios.length) { zonaH.replaceChildren(h("p", { class: "nota" }, "Aún no hay horarios. Créalos en Administrar > Horarios.")); return; }
+        const sel = h("select", { class: "entrada", id: `eh-${e.id}` },
+          h("option", { value: "" }, "Sin horario"),
+          horarios.map((x) => h("option", { value: x.id, selected: x.id === vigente?.horario_id }, `${x.nombre} · ${resumenHorario(dias.filter((d) => d.horario_id === x.id))}`)));
+        const guardar = h("button", { class: "boton boton--secundario boton--chico", type: "button",
+          onclick: async () => {
+            if ((sel.value || null) === (vigente?.horario_id ?? null)) { avisar("Ya tiene ese horario."); return; }
+            guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+            try {
+              const plan = planearCambioHorario(asignaciones, hoy);
+              for (const id of plan.borrar) await q(sb.from("empleado_horarios").delete().eq("id", id));
+              for (const c of plan.cerrar) await q(sb.from("empleado_horarios").update({ vigencia: `[${c.desde},${hoy})` }).eq("id", c.id));
+              if (sel.value) await q(sb.from("empleado_horarios").insert({ empresa_id: eid(), empleado_id: e.id, horario_id: sel.value, vigencia: `[${hoy},)` }));
+              avisar(sel.value ? "Horario asignado desde hoy." : "Se quitó el horario desde hoy.");
+              await pintarHorarioEmpleado(e, zonaH);
+            } catch (err) { avisar(mensajeDeError(err), "error"); guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+          } }, "Cambiar horario");
+        zonaH.replaceChildren(h("div", { class: "campo", style: "max-width:30rem" }, h("label", { for: `eh-${e.id}` }, "Horario"), sel,
+          h("small", {}, "El cambio rige desde hoy; lo anterior se conserva en el historial.")), h("div", { style: "margin-top:.5rem" }, guardar));
+      } catch (err) { zonaH.replaceChildren(bloqueError(err, () => pintarHorarioEmpleado(e, zonaH))); }
     }
 
     function pintarInvitacion(zona, e, inv) {
@@ -892,18 +926,19 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   async function vistaAdministrar(cont, ctx) {
     const verUsuarios = puedeAdministrar();
     const verEmpresas = estado.plataforma;
-    let pestana = verUsuarios ? "usuarios" : "empresas";
+    const opciones = [];
+    if (verUsuarios) opciones.push(["usuarios", "Usuarios", pintarUsuarios], ["lugares", "Lugares", pintarLugares], ["horarios", "Horarios", pintarHorarios]);
+    if (verEmpresas) opciones.push(["empresas", "Empresas", pintarEmpresas]);
+    let pestana = ctx.parametros?.get("p");
+    if (!opciones.some(([id]) => id === pestana)) pestana = opciones[0][0];
     const zona = h("div", {});
-    const boton = (id, texto) => h("button", { class: "boton boton--secundario boton--chico", type: "button", "aria-pressed": String(pestana === id),
-      onclick: () => { pestana = id; for (const b of document.querySelectorAll("[data-pestana]")) b.setAttribute("aria-pressed", String(b.dataset.pestana === id)); mostrar(); } }, texto);
-    const pestanas = verUsuarios && verEmpresas
-      ? h("div", { class: "resumen" }, ...[["usuarios", "Usuarios"], ["empresas", "Empresas"]].map(([id, t]) => { const b = boton(id, t); b.dataset.pestana = id; return b; }))
-      : null;
+    const botones = opciones.map(([id, texto]) => h("button", { class: "boton boton--secundario boton--chico", type: "button", "data-pestana": id, "aria-pressed": String(pestana === id),
+      onclick: () => { pestana = id; for (const b of botones) b.setAttribute("aria-pressed", String(b.dataset.pestana === id)); mostrar(); } }, texto));
+    const subtitulo = [verUsuarios && `Usuarios, sedes y horarios de ${estado.empresa?.nombre ?? "tu empresa"}`, verEmpresas && "empresas de la plataforma"].filter(Boolean).join(" · ");
     cont.replaceChildren(
-      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Administrar"),
-        h("p", {}, verUsuarios ? `Usuarios y roles de ${estado.empresa?.nombre ?? "tu empresa"}${verEmpresas ? " · empresas de la plataforma" : ""}` : "Empresas de la plataforma"))),
-      selectorEmpresa(), pestanas, zona);
-    function mostrar() { if (pestana === "usuarios") pintarUsuarios(zona, ctx); else pintarEmpresas(zona, ctx); }
+      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Administrar"), h("p", {}, subtitulo))),
+      selectorEmpresa(), opciones.length > 1 ? h("div", { class: "resumen" }, botones) : null, zona);
+    function mostrar() { opciones.find(([id]) => id === pestana)[2](zona, ctx); }
     mostrar();
   }
 
@@ -1114,6 +1149,301 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         error, resultado,
         h("div", { class: "formulario__acciones" }, guardar,
           h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cerrar"))));
+      nombre.focus();
+    }
+    await cargar();
+  }
+
+  // ---------- Lugares: sedes y geocercas ----------
+  async function refrescarSedes() {
+    estado.sedes = (await q(sb.from("sedes").select("id,nombre,zona_horaria,activa").eq("empresa_id", eid()).order("nombre"))).filter((x) => x.activa);
+  }
+
+  async function pintarLugares(zona, ctx) {
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    zona.replaceChildren(
+      h("p", { class: "nota", style: "margin-bottom:.75rem" }, "Cada sede tiene su zona horaria y una o más geocercas. Por WhatsApp solo se acepta un registro hecho dentro de una geocerca activa."),
+      h("div", { class: "formulario__acciones", style: "margin-bottom:.75rem" },
+        h("button", { class: "boton boton--primario", type: "button", onclick: () => formularioSede() }, icono("agregar"), "Agregar sede")),
+      espacioForm, lista);
+    let sedes = []; let geocercas = [];
+
+    async function cargar() {
+      lista.replaceChildren(esqueletos(2));
+      try {
+        [sedes, geocercas] = await Promise.all([
+          q(sb.from("sedes").select("id,nombre,direccion,zona_horaria,activa").eq("empresa_id", eid()).order("nombre")),
+          q(sb.from("geocercas").select("id,sede_id,nombre,lat,lng,radio_m,activa").eq("empresa_id", eid()).order("creado_at")),
+        ]);
+        await refrescarSedes();
+        if (ctx.vigente()) pintar();
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function pintar() {
+      if (!sedes.length) {
+        lista.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "Aún no hay sedes"),
+          h("p", {}, "Crea la primera sede y ponle su geocerca; sin eso nadie puede registrarse por WhatsApp.")));
+        return;
+      }
+      lista.replaceChildren(h("ul", { class: "lista" }, sedes.map(filaSede)));
+    }
+
+    function filaSede(s) {
+      const propias = geocercas.filter((g) => g.sede_id === s.id);
+      const activas = propias.filter((g) => g.activa).length;
+      const detalle = h("div", { class: "detalle", hidden: true });
+      const id = `sd-${s.id}`; detalle.id = id;
+      const fila = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": id,
+        onclick: () => { const ab = fila.getAttribute("aria-expanded") === "true"; fila.setAttribute("aria-expanded", String(!ab)); detalle.hidden = ab; if (!ab) pintarSede(s, propias, detalle); } },
+        h("span", { class: "avatar", "aria-hidden": "true" }, icono("mapa")),
+        h("span", { style: "min-width:0" },
+          h("div", { class: "fila__nombre" }, s.nombre),
+          h("div", { class: "fila__sub" }, activas ? `${activas} ${activas === 1 ? "geocerca activa" : "geocercas activas"}` : "Sin geocerca activa")),
+        h("span", { class: "fila__fin" },
+          !s.activa && h("span", { class: "chip chip--baja" }, "Inactiva"),
+          s.activa && !activas && h("span", { class: "chip chip--aviso" }, "Falta geocerca")),
+        h("span", { class: "fila__flecha" }, icono("flecha")));
+      return h("li", {}, fila, detalle);
+    }
+
+    function selectorZona(valor, idCampo) {
+      return h("select", { class: "entrada", id: idCampo }, ZONAS_HORARIAS_MX.map(([v, t]) => h("option", { value: v, selected: v === valor }, t)));
+    }
+
+    function pintarSede(s, propias, cuerpo) {
+      const nombre = h("input", { class: "entrada", id: `sn-${s.id}`, value: s.nombre, autocomplete: "off" });
+      const direccion = h("input", { class: "entrada", id: `sdir-${s.id}`, value: s.direccion ?? "", autocomplete: "off" });
+      const zonaH = selectorZona(s.zona_horaria, `sz-${s.id}`);
+      const guardar = h("button", { class: "boton boton--primario boton--chico", type: "button",
+        onclick: async () => {
+          if (nombre.value.trim().length < 2) { avisar("Escribe el nombre de la sede.", "error"); return; }
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            await q(sb.from("sedes").update({ nombre: nombre.value.trim(), direccion: direccion.value.trim() || null, zona_horaria: zonaH.value }).eq("id", s.id));
+            avisar("Sede guardada."); await cargar();
+          } catch (err) { avisar(err?.code === "23505" ? "Ya tienes una sede con ese nombre." : mensajeDeError(err), "error"); guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } }, "Guardar sede");
+      let confirmando = false;
+      const alterna = h("button", { class: `boton boton--chico ${s.activa ? "boton--peligro" : "boton--secundario"}`, type: "button",
+        onclick: async () => {
+          if (s.activa && !confirmando) { confirmando = true; alterna.textContent = "Confirmar"; setTimeout(() => { confirmando = false; alterna.textContent = "Desactivar sede"; }, 5000); return; }
+          alterna.disabled = true;
+          try { await q(sb.from("sedes").update({ activa: !s.activa }).eq("id", s.id)); avisar(s.activa ? "Sede desactivada." : "Sede reactivada."); await cargar(); }
+          catch (err) { avisar(mensajeDeError(err), "error"); alterna.disabled = false; }
+        } }, s.activa ? "Desactivar sede" : "Reactivar sede");
+      const zonaGeo = h("div", {});
+      cuerpo.replaceChildren(h("div", { style: "display:grid; gap:.75rem; padding-top:.75rem" },
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: `sn-${s.id}` }, "Nombre"), nombre),
+          h("div", { class: "campo" }, h("label", { for: `sdir-${s.id}` }, "Dirección (opcional)"), direccion)),
+        h("div", { class: "campo", style: "max-width:26rem" }, h("label", { for: `sz-${s.id}` }, "Zona horaria"), zonaH),
+        h("div", { class: "formulario__acciones" }, guardar, alterna),
+        h("h3", { class: "seccion" }, "Geocercas"), zonaGeo));
+      pintarGeocercas(s, propias, zonaGeo);
+    }
+
+    function pintarGeocercas(s, propias, zonaGeo) {
+      const espacio = h("div", {});
+      const filas = propias.map((g) => filaGeocerca(g, espacio));
+      zonaGeo.replaceChildren(
+        propias.length ? h("ul", { class: "lista" }, filas) : h("p", { class: "nota" }, "Esta sede todavía no tiene geocercas."),
+        espacio,
+        h("div", { class: "formulario__acciones", style: "margin-top:.5rem" },
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioGeocerca(s, null, espacio) }, icono("agregar"), "Agregar geocerca")));
+    }
+
+    function filaGeocerca(g, espacio) {
+      return h("li", { class: "fila fila--fija" },
+        h("span", { class: "avatar", "aria-hidden": "true" }, icono("mapa")),
+        h("span", { style: "min-width:0" },
+          h("div", { class: "fila__nombre" }, g.nombre),
+          h("div", { class: "fila__sub" }, `Radio de ${g.radio_m} m · ${Number(g.lat).toFixed(5)}, ${Number(g.lng).toFixed(5)}`)),
+        h("span", { class: "fila__fin" },
+          !g.activa && h("span", { class: "chip chip--baja" }, "Inactiva"),
+          h("a", { class: "boton boton--secundario boton--chico", href: enlaceMapa(g.lat, g.lng), target: "_blank", rel: "noopener noreferrer" }, "Ver mapa"),
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioGeocerca({ id: g.sede_id }, g, espacio) }, "Editar")));
+    }
+
+    function formularioGeocerca(s, g, espacio) {
+      const sufijo = g?.id ?? "nueva";
+      const nombre = h("input", { class: "entrada", id: `gn-${sufijo}`, value: g?.nombre ?? "Principal", autocomplete: "off" });
+      const coordenadas = h("input", { class: "entrada", id: `gc-${sufijo}`, inputmode: "text", autocomplete: "off", placeholder: "20.6597, -103.3496",
+        value: g ? `${g.lat}, ${g.lng}` : "" });
+      const radio = h("input", { class: "entrada", id: `gr-${sufijo}`, type: "number", inputmode: "numeric", min: "10", max: "5000", value: String(g?.radio_m ?? 100) });
+      const activa = h("input", { type: "checkbox", checked: g ? g.activa : true });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const falla = (t) => { error.textContent = t; error.hidden = false; };
+      const aqui = h("button", { class: "boton boton--secundario boton--chico", type: "button",
+        onclick: () => {
+          if (!navigator.geolocation) return falla("Este teléfono no permite obtener la ubicación. Pega las coordenadas.");
+          aqui.setAttribute("aria-busy", "true"); aqui.disabled = true; error.hidden = true;
+          navigator.geolocation.getCurrentPosition(
+            (p) => { coordenadas.value = `${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}`; aqui.removeAttribute("aria-busy"); aqui.disabled = false; },
+            () => { falla("No se pudo obtener la ubicación. Da permiso al navegador o pega las coordenadas."); aqui.removeAttribute("aria-busy"); aqui.disabled = false; },
+            { enableHighAccuracy: true, timeout: 15000 });
+        } }, icono("mapa"), "Usar mi ubicación actual");
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, g ? "Guardar geocerca" : "Crear geocerca");
+      espacio.replaceChildren(h("form", { class: "formulario", novalidate: true, style: "margin-top:.75rem",
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const c = parsearCoordenadas(coordenadas.value);
+          const malo = errorDeGeocerca({ lat: c?.lat ?? NaN, lng: c?.lng ?? NaN, radio: Number(radio.value) });
+          if (nombre.value.trim().length < 1) return falla("Ponle un nombre a la geocerca, por ejemplo Entrada principal.");
+          if (malo) return falla(malo);
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            const fila = { nombre: nombre.value.trim(), lat: c.lat, lng: c.lng, radio_m: Number(radio.value), activa: activa.checked };
+            if (g) await q(sb.from("geocercas").update(fila).eq("id", g.id));
+            else await q(sb.from("geocercas").insert({ ...fila, empresa_id: eid(), sede_id: s.id }));
+            avisar("Geocerca guardada."); await cargar();
+          } catch (err) { falla(mensajeDeError(err)); guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } },
+        h("h3", {}, g ? "Editar geocerca" : "Nueva geocerca"),
+        h("div", { class: "campo" }, h("label", { for: `gn-${sufijo}` }, "Nombre"), nombre),
+        h("div", { class: "campo" }, h("label", { for: `gc-${sufijo}` }, "Ubicación (latitud, longitud)"), coordenadas,
+          h("small", {}, "Párate en el lugar y usa tu ubicación actual, o en Google Maps mantén presionado el punto y copia los números que aparecen.")),
+        h("div", {}, aqui),
+        h("div", { class: "campo", style: "max-width:12rem" }, h("label", { for: `gr-${sufijo}` }, "Radio (metros)"), radio,
+          h("small", {}, "De 10 a 5000. Para una oficina, 100 m suele bastar.")),
+        h("label", { class: "opcion" }, activa, "Activa"),
+        error,
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacio.replaceChildren() }, "Cancelar"))));
+      nombre.focus();
+    }
+
+    function formularioSede() {
+      if (espacioForm.firstChild) { espacioForm.replaceChildren(); return; }
+      const nombre = h("input", { class: "entrada", id: "ns-nombre", autocomplete: "off", required: true });
+      const direccion = h("input", { class: "entrada", id: "ns-dir", autocomplete: "off" });
+      const zonaH = selectorZona("America/Mexico_City", "ns-zona");
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Crear sede");
+      espacioForm.replaceChildren(h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          if (nombre.value.trim().length < 2) { error.textContent = "Escribe el nombre de la sede."; error.hidden = false; return; }
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            await q(sb.from("sedes").insert({ empresa_id: eid(), nombre: nombre.value.trim(), direccion: direccion.value.trim() || null, zona_horaria: zonaH.value }));
+            avisar("Sede creada. Ahora agrégale una geocerca."); espacioForm.replaceChildren(); await cargar();
+          } catch (err) { error.textContent = err?.code === "23505" ? "Ya tienes una sede con ese nombre." : mensajeDeError(err); error.hidden = false; }
+          finally { guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } },
+        h("h2", {}, "Nueva sede"),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "ns-nombre" }, "Nombre"), nombre),
+          h("div", { class: "campo" }, h("label", { for: "ns-dir" }, "Dirección (opcional)"), direccion)),
+        h("div", { class: "campo", style: "max-width:26rem" }, h("label", { for: "ns-zona" }, "Zona horaria"), zonaH),
+        error,
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar"))));
+      nombre.focus();
+    }
+    await cargar();
+  }
+
+  // ---------- Horarios ----------
+  async function pintarHorarios(zona, ctx) {
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    zona.replaceChildren(
+      h("p", { class: "nota", style: "margin-bottom:.75rem" }, "Un horario dice a qué hora entra la gente cada día y cuánta tolerancia tiene. Después se lo asignas a cada empleado en Equipo. Sin horario no se pueden marcar retardos."),
+      h("div", { class: "formulario__acciones", style: "margin-bottom:.75rem" },
+        h("button", { class: "boton boton--primario", type: "button", onclick: () => formulario(null) }, icono("agregar"), "Nuevo horario")),
+      espacioForm, lista);
+    let horarios = []; let dias = []; let asignaciones = [];
+
+    async function cargar() {
+      lista.replaceChildren(esqueletos(2));
+      try {
+        horarios = await q(sb.from("horarios").select("id,nombre,tolerancia_retardo_min,tolerancia_salida_min").eq("empresa_id", eid()).order("nombre"));
+        const ids = horarios.map((x) => x.id);
+        dias = ids.length ? await q(sb.from("horario_dias").select("id,horario_id,dia_semana,hora_entrada,hora_salida,minutos_pausa").in("horario_id", ids)) : [];
+        asignaciones = await q(sb.from("empleado_horarios").select("id,horario_id,vigencia").eq("empresa_id", eid()));
+        if (ctx.vigente()) pintar();
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function pintar() {
+      if (!horarios.length) {
+        lista.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "Aún no hay horarios"),
+          h("p", {}, "Crea uno, por ejemplo Oficina de lunes a viernes de 9:00 a 18:00.")));
+        return;
+      }
+      lista.replaceChildren(h("ul", { class: "lista" }, horarios.map((x) => {
+        const propios = dias.filter((d) => d.horario_id === x.id);
+        const usados = asignaciones.filter((a) => a.horario_id === x.id && (parsearVigencia(a.vigencia)?.hasta ?? "9999") > fechaLocal(new Date(), "America/Mexico_City")).length;
+        return h("li", {}, h("button", { class: "fila", type: "button", onclick: () => formulario(x),
+            "aria-label": `Editar el horario ${x.nombre}` },
+          h("span", { style: "min-width:0" },
+            h("div", { class: "fila__nombre" }, x.nombre),
+            h("div", { class: "fila__sub" }, resumenHorario(propios) || "Sin días"),
+            h("div", { class: "fila__sub" }, `Tolerancia ${x.tolerancia_retardo_min} min · ${usados} ${usados === 1 ? "empleado" : "empleados"}`)),
+          h("span", { class: "fila__flecha" }, icono("flecha"))));
+      })));
+    }
+
+    function formulario(x) {
+      const propios = x ? dias.filter((d) => d.horario_id === x.id) : [];
+      const nombre = h("input", { class: "entrada", id: "h-nombre", value: x?.nombre ?? "", autocomplete: "off", required: true });
+      const tolRetardo = h("input", { class: "entrada", id: "h-tr", type: "number", inputmode: "numeric", min: "0", max: "240", value: String(x?.tolerancia_retardo_min ?? 10) });
+      const tolSalida = h("input", { class: "entrada", id: "h-ts", type: "number", inputmode: "numeric", min: "0", max: "240", value: String(x?.tolerancia_salida_min ?? 0) });
+      const ORDEN = [1, 2, 3, 4, 5, 6, 0];
+      const filasDia = ORDEN.map((n) => {
+        const d = propios.find((p) => p.dia_semana === n);
+        const marca = h("input", { type: "checkbox", checked: d ? true : (!x && n >= 1 && n <= 5), "aria-label": `Trabaja el ${NOMBRES_DIA[n]}` });
+        const entrada = h("input", { class: "entrada", type: "time", value: d ? String(d.hora_entrada).slice(0, 5) : "09:00", "aria-label": `Entrada del ${NOMBRES_DIA[n]}` });
+        const salida = h("input", { class: "entrada", type: "time", value: d ? String(d.hora_salida).slice(0, 5) : "18:00", "aria-label": `Salida del ${NOMBRES_DIA[n]}` });
+        const pausa = h("input", { class: "entrada", type: "number", inputmode: "numeric", min: "0", max: "240", value: String(d?.minutos_pausa ?? 0), "aria-label": `Minutos de pausa del ${NOMBRES_DIA[n]}` });
+        const fila = h("div", { class: "cuadricula", style: "grid-template-columns:5.5rem 1fr 1fr 4.5rem; align-items:center; gap:.5rem" },
+          h("label", { class: "opcion" }, marca, NOMBRES_DIA[n][0].toUpperCase() + NOMBRES_DIA[n].slice(1, 3)), entrada, salida, pausa);
+        return { n, marca, entrada, salida, pausa, fila };
+      });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, x ? "Guardar horario" : "Crear horario");
+      let confirmando = false;
+      const borrar = x && h("button", { class: "boton boton--peligro", type: "button",
+        onclick: async () => {
+          if (!confirmando) { confirmando = true; borrar.textContent = "Confirmar eliminar"; setTimeout(() => { confirmando = false; borrar.textContent = "Eliminar horario"; }, 5000); return; }
+          borrar.disabled = true;
+          try { await q(sb.from("horarios").delete().eq("id", x.id)); avisar("Horario eliminado."); espacioForm.replaceChildren(); await cargar(); }
+          catch (err) { error.textContent = err?.code === "23503" ? "Este horario está asignado a empleados. Cámbiales el horario en Equipo y vuelve a intentar." : mensajeDeError(err); error.hidden = false; borrar.disabled = false; }
+        } }, "Eliminar horario");
+      espacioForm.replaceChildren(h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const elegidos = filasDia.filter((f) => f.marca.checked).map((f) => ({
+            dia_semana: f.n, hora_entrada: f.entrada.value, hora_salida: f.salida.value, minutos_pausa: Number(f.pausa.value || 0),
+          }));
+          const datos = { nombre: nombre.value, tolerancia_retardo_min: Number(tolRetardo.value), tolerancia_salida_min: Number(tolSalida.value), dias: elegidos };
+          const malo = errorDeHorario(datos);
+          if (malo) { error.textContent = malo; error.hidden = false; return; }
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            const cabecera = { nombre: nombre.value.trim(), tolerancia_retardo_min: datos.tolerancia_retardo_min, tolerancia_salida_min: datos.tolerancia_salida_min };
+            let id = x?.id;
+            if (id) { await q(sb.from("horarios").update(cabecera).eq("id", id)); await q(sb.from("horario_dias").delete().eq("horario_id", id)); }
+            else id = (await q(sb.from("horarios").insert({ ...cabecera, empresa_id: eid() }).select("id").single())).id;
+            await q(sb.from("horario_dias").insert(elegidos.map((d) => ({ ...d, horario_id: id }))));
+            avisar("Horario guardado."); espacioForm.replaceChildren(); await cargar();
+          } catch (err) { error.textContent = err?.code === "23505" ? "Ya tienes un horario con ese nombre." : mensajeDeError(err); error.hidden = false; await cargar(); }
+          finally { guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } },
+        h("h2", {}, x ? `Editar ${x.nombre}` : "Nuevo horario"),
+        h("div", { class: "campo" }, h("label", { for: "h-nombre" }, "Nombre"), nombre),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "h-tr" }, "Tolerancia de entrada (min)"), tolRetardo, h("small", {}, "Pasado este tiempo cuenta como retardo.")),
+          h("div", { class: "campo" }, h("label", { for: "h-ts" }, "Tolerancia de salida (min)"), tolSalida)),
+        h("fieldset", { class: "opciones" }, h("legend", { class: "campo__etiqueta" }, "Días, entrada, salida y pausa (min)"),
+          filasDia.map((f) => f.fila),
+          h("p", { class: "nota" }, "Si la salida es menor que la entrada, el turno cruza la medianoche.")),
+        error,
+        h("div", { class: "formulario__acciones" }, guardar, borrar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar"))));
+      espacioForm.scrollIntoView?.({ block: "start" });
       nombre.focus();
     }
     await cargar();

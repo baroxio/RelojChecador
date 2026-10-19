@@ -123,7 +123,7 @@ Notas de diseño:
 |---|---|
 | Alta, edición y baja de empleados; importación masiva por Excel | MVP |
 | Asignación de horario, sede y supervisor | MVP |
-| Mapa para dibujar y ajustar geocercas | MVP |
+| Geocercas desde el panel con ubicación actual o coordenadas (el mapa para dibujar el círculo queda pendiente) | MVP |
 | Configuración de reglas: tolerancias, pausas, redondeo | MVP |
 | Configuración de plantillas de aviso | v2 |
 | Aviso de privacidad y consentimientos por empleado | MVP |

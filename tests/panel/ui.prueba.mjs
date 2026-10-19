@@ -42,7 +42,7 @@ const llamadas = [];
 
 function crearSb(sesion) {
   function tabla(nombre) {
-    const filtros = []; let modo = "select"; let carga = null; let cabeza = false;
+    const filtros = []; let modo = "select"; let carga = null; let cabeza = false; let unico = false;
     const b = {
       select(_c, o) { if (o?.head) cabeza = true; return b; },
       eq(c, v) { filtros.push((r) => r[c] === v); return b; },
@@ -52,12 +52,20 @@ function crearSb(sesion) {
       order() { return b; }, limit() { return b; },
       insert(v) { modo = "insert"; carga = v; return b; },
       update(v) { modo = "update"; carga = v; return b; },
+      delete() { modo = "delete"; return b; },
+      single() { unico = true; return b; },
       then(ok, mal) { return ejecutar().then(ok, mal); },
     };
     async function ejecutar() {
       if (globalThis.__sinRed) return { data: null, error: { message: "TypeError: Failed to fetch" } };
       const filas = (datos[nombre] ?? []).filter((r) => filtros.every((f) => f(r)));
-      if (modo === "insert") { llamadas.push(["insert", nombre, carga]); (datos[nombre] ??= []).push({ id: "nuevo", ...carga }); return { data: null, error: null }; }
+      if (modo === "insert") {
+        llamadas.push(["insert", nombre, carga]);
+        const nuevas = [].concat(carga).map((c, i) => ({ id: `nuevo-${nombre}-${(datos[nombre] ?? []).length + i}`, ...c }));
+        (datos[nombre] ??= []).push(...nuevas);
+        return { data: unico ? nuevas[0] : null, error: null };
+      }
+      if (modo === "delete") { llamadas.push(["delete", nombre, filas.map((r) => r.id)]); datos[nombre] = (datos[nombre] ?? []).filter((r) => !filas.includes(r)); return { data: null, error: null }; }
       if (modo === "update") { llamadas.push(["update", nombre, carga]); filas.forEach((r) => Object.assign(r, carga)); return { data: null, error: null }; }
       return cabeza ? { data: null, count: filas.length, error: null } : { data: filas, error: null };
     }
@@ -217,7 +225,7 @@ location.hash = "#/administrar";
 window.dispatchEvent(new dom.window.Event("hashchange"));
 await esperar(120);
 t = texto();
-assert.match(t, /Usuarios y roles de Empresa de prueba/);
+assert.match(t, /Usuarios, sedes y horarios de Empresa de prueba/);
 assert.match(t, /Sara Supervisora/);
 assert.match(t, /baja@prueba\.mx/, "sin nombre se muestra el correo");
 assert.ok([...document.querySelectorAll(".nav a")].some((a) => a.textContent.includes("Administrar")), "el menú tiene Administrar");
@@ -253,6 +261,64 @@ assert.ok(cambio && cambio[2].miembro_id === "m2" && cambio[2].rol === "consulta
 [...document.querySelectorAll("button.fila")].find((b) => b.textContent.includes("Dueño Prueba")).click(); await esperar(30);
 assert.match(texto(), /Eres tú/);
 console.log("OK Administrar: cambio de rol y protección de la propia cuenta");
+
+// 5d-bis. Lugares: sedes y geocercas
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Lugares").click();
+await esperar(100);
+t = texto();
+assert.match(t, /Sede Centro/);
+assert.match(t, /Falta geocerca/, "una sede sin geocerca se marca");
+[...document.querySelectorAll("button.fila")].find((b) => b.textContent.includes("Sede Centro")).click(); await esperar(30);
+[...document.querySelectorAll("button")].find((b) => b.textContent.includes("Agregar geocerca")).click(); await esperar();
+document.getElementById("gc-nueva").value = "no son coordenadas";
+let fg = document.getElementById("gc-nueva").closest("form");
+fg.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true })); await esperar();
+assert.match(texto(), /Pon la ubicación/);
+document.getElementById("gc-nueva").value = "20.6597, -103.3496"; document.getElementById("gr-nueva").value = "9";
+fg.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true })); await esperar();
+assert.match(texto(), /entre 10 y 5000/);
+document.getElementById("gr-nueva").value = "150";
+fg.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true })); await esperar(100);
+const geo = llamadas.find((c) => c[0] === "insert" && c[1] === "geocercas");
+assert.ok(geo && geo[2].sede_id === "s1" && geo[2].empresa_id === "emp" && geo[2].radio_m === 150 && geo[2].lat === 20.6597 && geo[2].lng === -103.3496);
+assert.match(texto(), /1 geocerca activa/);
+// nueva sede
+[...document.querySelectorAll("button")].find((b) => b.textContent.includes("Agregar sede")).click(); await esperar();
+document.getElementById("ns-nombre").value = "Bodega Norte"; document.getElementById("ns-zona").value = "America/Hermosillo";
+document.getElementById("ns-nombre").closest("form").dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true })); await esperar(100);
+const sedeNueva = llamadas.find((c) => c[0] === "insert" && c[1] === "sedes");
+assert.ok(sedeNueva && sedeNueva[2].nombre === "Bodega Norte" && sedeNueva[2].zona_horaria === "America/Hermosillo");
+console.log("OK Lugares: sede nueva y geocerca con validación");
+
+// 5d-ter. Horarios
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Horarios").click();
+await esperar(100);
+assert.match(texto(), /Aún no hay horarios/);
+[...document.querySelectorAll("button")].find((b) => b.textContent.includes("Nuevo horario")).click(); await esperar();
+document.getElementById("h-nombre").value = "Oficina";
+const fh = document.getElementById("h-nombre").closest("form");
+fh.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true })); await esperar(100);
+const cab = llamadas.find((c) => c[0] === "insert" && c[1] === "horarios");
+assert.ok(cab && cab[2].tolerancia_retardo_min === 10);
+const diasIns = llamadas.find((c) => c[0] === "insert" && c[1] === "horario_dias");
+assert.equal(diasIns[2].length, 5, "por defecto lunes a viernes");
+assert.deepEqual(diasIns[2].map((d) => d.dia_semana), [1, 2, 3, 4, 5]);
+assert.ok(diasIns[2].every((d) => d.hora_entrada === "09:00" && d.hora_salida === "18:00"));
+assert.match(texto(), /Oficina/);
+assert.match(texto(), /Lun–Vie 09:00–18:00/);
+console.log("OK Horarios: alta con días y resumen");
+
+// Equipo: asignar el horario a un empleado
+location.hash = "#/equipo"; window.dispatchEvent(new dom.window.Event("hashchange")); await esperar(100);
+[...document.querySelectorAll("button.fila")].find((b) => b.textContent.includes("Ana López")).click(); await esperar(120);
+const selH = document.getElementById("eh-e1");
+assert.ok(selH, "hay selector de horario");
+selH.value = datos.horarios[0].id;
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Cambiar horario").click(); await esperar(100);
+const asig = llamadas.find((c) => c[0] === "insert" && c[1] === "empleado_horarios");
+assert.ok(asig && asig[2].empleado_id === "e1" && asig[2].horario_id === datos.horarios[0].id && /^\[\d{4}-\d{2}-\d{2},\)$/.test(asig[2].vigencia));
+console.log("OK Equipo: horario por empleado");
+location.hash = "#/administrar"; window.dispatchEvent(new dom.window.Event("hashchange")); await esperar(100);
 
 // 5e. Administrar: empresas (administrador de la plataforma)
 [...document.querySelectorAll("button")].find((b) => b.textContent === "Empresas").click();

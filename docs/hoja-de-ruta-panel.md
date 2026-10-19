@@ -37,9 +37,12 @@ returning user_id;
 ```
    Sin esa fila, nadie ve la pestaña Empresas.
 
-## Fase 3: sedes, geocercas y horarios
-- Administrar sedes y geocercas por empresa (mapa para colocar y ajustar el círculo).
-- Modificar el horario de trabajo por empleado (tablas `horarios`, `horario_dias`, `empleado_horarios`, que ya existen).
+## Fase 3: sedes, geocercas y horarios (hecha, falta probar en vivo)
+Todo se escribe desde el panel con la sesión del usuario: las políticas RLS que ya existían (`sedes_write`, `geocercas_write`, `horarios_write`, `horario_dias_write`, `empleado_horarios_write`) permiten solo a dueño y administrador, así que no hace falta función de servidor ni migración.
+- **Administrar > Lugares:** crear y editar sedes (nombre, dirección, zona horaria de México), desactivarlas, y por sede agregar, editar y desactivar geocercas. La ubicación se toma con "Usar mi ubicación actual" parado en el lugar, o pegando las coordenadas de Google Maps; el radio va de 10 a 5000 m. Las geocercas no se borran porque los registros las referencian: se desactivan.
+- **Administrar > Horarios:** crear, editar y eliminar horarios con días, entrada, salida, pausa y tolerancias. Un horario asignado a empleados no se puede eliminar.
+- **Equipo > detalle del empleado:** asignar o quitar el horario. El cambio rige desde hoy: la asignación vigente se cierra hoy y queda en el historial (`empleado_horarios.vigencia`).
+- Pendiente: mapa dibujado para ajustar el círculo (se evitó un servicio de mapas externo por privacidad y para que el panel siga funcionando sin dependencias), jornada partida desde la pantalla (la base ya la soporta) y días festivos.
 
 ## Fase 4: avisos y registro sin internet
 - Avisar por WhatsApp al empleado que quedó registrado con la empresa X. Fuera de la ventana de 24 horas, WhatsApp exige una **plantilla aprobada por Meta**. Mientras tanto, el panel ya genera el mensaje listo para enviar desde el teléfono del dueño.

@@ -5,6 +5,7 @@ import {
   aUTCdesdeLocal, contarGrupos, diaSemana, enlaceMensajeEmpleado, fechaLocal, formatearDistancia,
   formatearDuracion, formatearTelefono, horaLocal, horarioDelDia, iniciales, minutosDeRetardo,
   normalizarTelefonoMx, parsearVigencia, resumenDelDia, etiquetaSenal, rolesAsignables, puedeGestionarRol,
+  parsearCoordenadas, errorDeGeocerca, errorDeHorario, resumenHorario, planearCambioHorario,
 } from "./logic.js";
 
 const MX = "America/Mexico_City";
@@ -137,4 +138,42 @@ test("roles: qué ve cada quien", () => {
   assert.equal(puedeGestionarRol("dueno", "dueno"), true);
   assert.equal(puedeGestionarRol("admin", "admin"), false);
   assert.equal(puedeGestionarRol("admin", "consulta"), true);
+});
+
+test("coordenadas y geocercas", () => {
+  assert.deepEqual(parsearCoordenadas("20.6597, -103.3496"), { lat: 20.6597, lng: -103.3496 });
+  assert.deepEqual(parsearCoordenadas(" 20.6597 -103.3496 "), { lat: 20.6597, lng: -103.3496 });
+  assert.equal(parsearCoordenadas("91, 10"), null);
+  assert.equal(parsearCoordenadas("hola"), null);
+  assert.equal(errorDeGeocerca({ lat: 20.6, lng: -103.3, radio: 100 }), null);
+  assert.match(errorDeGeocerca({ lat: NaN, lng: -103.3, radio: 100 }), /ubicación/);
+  assert.match(errorDeGeocerca({ lat: 20.6, lng: -103.3, radio: 5 }), /radio/);
+  assert.match(errorDeGeocerca({ lat: 20.6, lng: -103.3, radio: 100.5 }), /radio/);
+});
+
+const dia = (n, e = "09:00", s = "18:00", p = 60) => ({ dia_semana: n, hora_entrada: e, hora_salida: s, minutos_pausa: p });
+
+test("validación y resumen de horarios", () => {
+  const base = { nombre: "Oficina", tolerancia_retardo_min: 10, tolerancia_salida_min: 0 };
+  assert.equal(errorDeHorario({ ...base, dias: [dia(1)] }), null);
+  assert.match(errorDeHorario({ ...base, nombre: " ", dias: [dia(1)] }), /nombre/);
+  assert.match(errorDeHorario({ ...base, dias: [] }), /al menos un día/);
+  assert.match(errorDeHorario({ ...base, dias: [dia(2, "09:00", "09:00")] }), /martes/);
+  assert.match(errorDeHorario({ ...base, tolerancia_retardo_min: -1, dias: [dia(1)] }), /tolerancia/);
+  assert.equal(errorDeHorario({ ...base, dias: [dia(5, "22:00", "06:00")] }), null); // turno nocturno
+  assert.equal(resumenHorario([1, 2, 3, 4, 5].map((n) => dia(n))), "Lun–Vie 09:00–18:00");
+  assert.equal(resumenHorario([...[1, 2, 3, 4, 5].map((n) => dia(n)), dia(6, "09:00", "14:00")]), "Lun–Vie 09:00–18:00 · Sáb 09:00–14:00");
+  assert.equal(resumenHorario([dia(1), dia(3)]), "Lun 09:00–18:00 · Mié 09:00–18:00");
+  assert.equal(resumenHorario([dia(0), dia(6)]), "Sáb–Dom 09:00–18:00");
+});
+
+test("cambio de horario cierra lo vigente", () => {
+  const hoy = "2026-10-19";
+  const plan = planearCambioHorario([
+    { id: "a", vigencia: "[2026-01-01,)" },
+    { id: "b", vigencia: "[2026-10-19,)" },
+    { id: "c", vigencia: "[2026-12-01,)" },
+    { id: "d", vigencia: "[2025-01-01,2026-01-01)" },
+  ], hoy);
+  assert.deepEqual(plan, { borrar: ["b", "c"], cerrar: [{ id: "a", desde: "2026-01-01" }] });
 });

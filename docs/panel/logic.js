@@ -275,3 +275,91 @@ export function puedeGestionarRol(actor, objetivo) {
   if (actor === "admin") return objetivo === "supervisor" || objetivo === "consulta";
   return false;
 }
+
+// --- Lugares (sedes y geocercas) ------------------------------------------
+
+/** "20.6597, -103.3496" (como lo copia Google Maps) -> {lat, lng}, o null. */
+export function parsearCoordenadas(texto) {
+  const m = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(String(texto ?? ""));
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 ? { lat, lng } : null;
+}
+
+/** Mensaje de error para una geocerca, o null si es válida. */
+export function errorDeGeocerca({ lat, lng, radio }) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return "Pon la ubicación con el botón de ubicación actual o pega las coordenadas, por ejemplo 20.6597, -103.3496.";
+  }
+  if (!Number.isInteger(radio) || radio < 10 || radio > 5000) return "El radio debe estar entre 10 y 5000 metros.";
+  return null;
+}
+
+export const ZONAS_HORARIAS_MX = [
+  ["America/Mexico_City", "Centro de México (CDMX, Guadalajara, Monterrey)"],
+  ["America/Cancun", "Quintana Roo"],
+  ["America/Chihuahua", "Chihuahua"],
+  ["America/Hermosillo", "Sonora"],
+  ["America/Mazatlan", "Sinaloa, Nayarit, BCS"],
+  ["America/Tijuana", "Baja California"],
+];
+
+// --- Horarios -------------------------------------------------------------
+
+export const NOMBRES_DIA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const ABREVIATURA_DIA = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0]; // la semana laboral empieza en lunes
+
+/** Valida los días de un horario: [{dia_semana, hora_entrada, hora_salida, minutos_pausa}]. */
+export function errorDeHorario({ nombre, tolerancia_retardo_min, tolerancia_salida_min, dias }) {
+  if (String(nombre ?? "").trim().length < 2) return "Ponle un nombre al horario, por ejemplo Oficina.";
+  for (const t of [tolerancia_retardo_min, tolerancia_salida_min]) {
+    if (!Number.isInteger(t) || t < 0 || t > 240) return "La tolerancia debe ser un número de minutos entre 0 y 240.";
+  }
+  if (!dias.length) return "Marca al menos un día de trabajo.";
+  for (const d of dias) {
+    const nombreDia = NOMBRES_DIA[d.dia_semana];
+    if (!/^\d{2}:\d{2}/.test(d.hora_entrada ?? "") || !/^\d{2}:\d{2}/.test(d.hora_salida ?? "")) return `Falta la hora del ${nombreDia}.`;
+    if (d.hora_entrada.slice(0, 5) === d.hora_salida.slice(0, 5)) return `La entrada y la salida del ${nombreDia} no pueden ser la misma hora.`;
+    if (!Number.isInteger(d.minutos_pausa) || d.minutos_pausa < 0 || d.minutos_pausa > 240) return `La pausa del ${nombreDia} debe ser de 0 a 240 minutos.`;
+  }
+  return null;
+}
+
+/** "Lun–Vie 09:00–18:00 · Sáb 09:00–14:00" */
+export function resumenHorario(dias) {
+  const porDia = new Map();
+  for (const d of dias) {
+    const t = `${String(d.hora_entrada).slice(0, 5)}–${String(d.hora_salida).slice(0, 5)}`;
+    porDia.set(d.dia_semana, [...(porDia.get(d.dia_semana) ?? []), t].join(" y "));
+  }
+  const tramos = [];
+  for (const dia of ORDEN_SEMANA) {
+    if (!porDia.has(dia)) continue;
+    const ultimo = tramos.at(-1);
+    if (ultimo && ultimo.texto === porDia.get(dia) && ultimo.siguiente === dia) { ultimo.fin = dia; ultimo.siguiente = ORDEN_SEMANA[ORDEN_SEMANA.indexOf(dia) + 1]; }
+    else tramos.push({ inicio: dia, fin: dia, texto: porDia.get(dia), siguiente: ORDEN_SEMANA[ORDEN_SEMANA.indexOf(dia) + 1] });
+  }
+  return tramos
+    .map((t) => `${t.inicio === t.fin ? ABREVIATURA_DIA[t.inicio] : `${ABREVIATURA_DIA[t.inicio]}–${ABREVIATURA_DIA[t.fin]}`} ${t.texto}`)
+    .join(" · ");
+}
+
+/**
+ * Qué hacer con las asignaciones de horario de un empleado para que desde `hoy` rija una nueva.
+ * asignaciones: [{id, vigencia}]. Devuelve { borrar: [id], cerrar: [{id, desde}] }:
+ * las que empezaron hoy o después se borran; las vigentes se cierran hoy (el límite superior es exclusivo).
+ */
+export function planearCambioHorario(asignaciones, hoy) {
+  const borrar = [];
+  const cerrar = [];
+  for (const a of asignaciones) {
+    const v = parsearVigencia(a.vigencia);
+    if (!v) continue;
+    if (v.hasta && v.hasta <= hoy) continue; // ya terminó
+    if (!v.desde || v.desde >= hoy) borrar.push(a.id);
+    else cerrar.push({ id: a.id, desde: v.desde });
+  }
+  return { borrar, cerrar };
+}
