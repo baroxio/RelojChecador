@@ -19,5 +19,9 @@ __pycache__/
 @eaDir/
 
 # Dependencias de las pruebas del panel
-tests/panel/node_modules/
+tests/panel/node_modules
 tests/panel/package-lock.json
+
+# Capturas de revisión de diseño (Impeccable)
+.impeccable/review/
+.impeccable/mocks/

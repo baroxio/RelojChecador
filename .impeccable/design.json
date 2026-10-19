@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T00:00:00Z",
+  "title": "Design System: RelojChecador (panel web)",
+  "extensions": {
+    "colorMeta": {
+      "tinta-700": { "role": "primary", "displayName": "Azul Tinta de Sello", "canonical": "#1e3a8a", "tonalRamp": ["#0c1530", "#101b3b", "#17275a", "#1e3a8a", "#2748a8", "#c9d4f0", "#e3e9f8", "#eef1f7"] },
+      "tinta-900": { "role": "primary", "displayName": "Azul Tinta Noche", "canonical": "#101b3b", "tonalRamp": ["#0c1530", "#101b3b", "#17275a", "#1e3a8a", "#2748a8", "#c9d4f0", "#e3e9f8", "#eef1f7"] },
+      "rojo": { "role": "secondary", "displayName": "Rojo de Sello", "canonical": "#b3261e", "tonalRamp": ["#5a130f", "#7c1a15", "#b3261e", "#d4564e", "#e3b3af", "#f1cdca", "#fce9e7", "#fff6f5"] },
+      "ambar": { "role": "secondary", "displayName": "Ámbar de Señal", "canonical": "#7a4b00", "tonalRamp": ["#3d2500", "#5c3800", "#7a4b00", "#b07a1f", "#d9a954", "#f0cf8e", "#fff1d0", "#fff8e8"] },
+      "verde": { "role": "secondary", "displayName": "Verde Sobrio", "canonical": "#1b6b3a", "tonalRamp": ["#0d3a1e", "#14522c", "#1b6b3a", "#3a8c58", "#6eb287", "#a8d4b8", "#e2f3e8", "#f2faf5"] },
+      "papel": { "role": "neutral", "displayName": "Papel Frío", "canonical": "#eef1f7", "tonalRamp": ["#131c36", "#3b4259", "#4f5a76", "#aab4cc", "#d3dae8", "#e3e9f8", "#eef1f7", "#ffffff"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Encabezado de pantalla", "purpose": "h1 de cada pantalla." },
+      "title": { "displayName": "Título", "purpose": "h2 de sección; los de grupo bajan a 1rem." },
+      "body": { "displayName": "Cuerpo", "purpose": "Texto base con numerales tabulares." },
+      "label": { "displayName": "Etiqueta", "purpose": "Botones y etiquetas de campo." },
+      "caption": { "displayName": "Nota", "purpose": "Subtítulos de fila, chips, errores, menú inferior." },
+      "sello-hora": { "displayName": "Hora del sello", "purpose": "Hora de un registro, siempre monoespaciada." },
+      "sello-tipo": { "displayName": "Tipo del sello", "purpose": "Abreviatura del tipo de registro dentro del sello." }
+    },
+    "shadows": [
+      { "name": "sombra", "value": "0 1px 2px rgb(16 27 59 / 0.08), 0 4px 14px rgb(16 27 59 / 0.06)", "purpose": "Solo para lo que flota: aviso flotante y caja de acceso." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Transiciones de botones (160 ms), flecha de fila (200 ms) y entrada del aviso (200 ms). Se reduce con prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "filas-y-formularios", "value": "40rem" },
+      { "name": "riel-de-escritorio", "value": "56rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de una pantalla.",
+      "html": "<button class=\"ds-boton\">Guardar</button>",
+      "css": ".ds-boton { min-height: 44px; padding: 0 1rem; border-radius: 6px; border: 1.5px solid transparent; background: var(--tinta-700, #1e3a8a); color: #fff; font-weight: 650; font-size: 0.9375rem; transition: background-color 160ms; } .ds-boton:hover { background: var(--tinta-600, #2748a8); } .ds-boton:focus-visible { outline: 3px solid #2748a8; outline-offset: 2px; } .ds-boton:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción de apoyo junto a la principal.",
+      "html": "<button class=\"ds-boton-sec\">Cancelar</button>",
+      "css": ".ds-boton-sec { min-height: 44px; padding: 0 1rem; border-radius: 6px; border: 1.5px solid #aab4cc; background: #fff; color: #1e3a8a; font-weight: 650; font-size: 0.9375rem; } .ds-boton-sec:hover { border-color: #1e3a8a; background: #e3e9f8; } .ds-boton-sec:focus-visible { outline: 3px solid #2748a8; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Entrada de formulario con etiqueta arriba.",
+      "html": "<div class=\"ds-campo\"><label>Nombre</label><input class=\"ds-entrada\" value=\"Ana Pérez\"></div>",
+      "css": ".ds-campo { display: grid; gap: 0.3rem; } .ds-campo label { font-size: 0.9375rem; font-weight: 650; } .ds-entrada { min-height: 44px; padding: 0.55rem 0.75rem; background: #fff; border: 1.5px solid #aab4cc; border-radius: 6px; font: inherit; } .ds-entrada:hover { border-color: #4f5a76; } .ds-entrada:focus-visible { outline: 3px solid #2748a8; outline-offset: 0; border-color: #1e3a8a; }"
+    },
+    {
+      "name": "Sello de entrada",
+      "kind": "custom",
+      "refersTo": "sello",
+      "description": "Hora de una entrada, monoespaciada con borde.",
+      "html": "<span class=\"ds-sello\"><span class=\"ds-tipo\">ENT</span><span class=\"ds-hora\">08:57</span></span>",
+      "css": ".ds-sello { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.12rem 0.55rem 0.15rem; font-family: ui-monospace, 'SF Mono', Consolas, monospace; color: #1e3a8a; border: 1.5px solid currentColor; border-radius: 6px; line-height: 1.25; } .ds-tipo { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; } .ds-hora { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }"
+    },
+    {
+      "name": "Sello de retardo",
+      "kind": "custom",
+      "refersTo": "sello-retardo",
+      "description": "Entrada con retardo: relleno rojo suave y borde grueso.",
+      "html": "<span class=\"ds-sello-r\"><span class=\"ds-tipo\">ENT</span><span class=\"ds-hora\">09:24</span></span>",
+      "css": ".ds-sello-r { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.12rem 0.55rem 0.15rem; font-family: ui-monospace, 'SF Mono', Consolas, monospace; color: #b3261e; background: #fce9e7; border: 2.5px solid currentColor; border-radius: 6px; line-height: 1.25; } .ds-tipo { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; } .ds-hora { font-size: 1rem; font-weight: 700; }"
+    },
+    {
+      "name": "Sello corregido",
+      "kind": "custom",
+      "refersTo": "sello",
+      "description": "Registro corregido: borde doble.",
+      "html": "<span class=\"ds-sello-c\"><span class=\"ds-tipo\">SAL</span><span class=\"ds-hora\">18:02</span></span>",
+      "css": ".ds-sello-c { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0 0.55rem; font-family: ui-monospace, 'SF Mono', Consolas, monospace; color: #3b4259; border: 4px double currentColor; border-radius: 6px; line-height: 1.25; } .ds-tipo { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; } .ds-hora { font-size: 1rem; font-weight: 700; }"
+    },
+    {
+      "name": "Chips de estado",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Conteos por grupo y estados.",
+      "html": "<span class=\"ds-chip\">12 presentes</span> <span class=\"ds-chip ds-ok\">Al corriente</span> <span class=\"ds-chip ds-rojo\">3 faltan</span>",
+      "css": ".ds-chip { display: inline-flex; padding: 0.12rem 0.55rem; border-radius: 1rem; font-size: 0.8125rem; font-weight: 700; background: #e3e9f8; color: #17275a; } .ds-ok { background: #e2f3e8; color: #1b6b3a; } .ds-rojo { background: #fce9e7; color: #b3261e; }"
+    },
+    {
+      "name": "Fila de empleado",
+      "kind": "card",
+      "refersTo": "fila",
+      "description": "Fila expandible: avatar de iniciales, nombre, último sello y flecha.",
+      "html": "<div class=\"ds-lista\"><button class=\"ds-fila\"><span class=\"ds-avatar\">AP</span><span><strong>Ana Pérez</strong><br><small>Sede Centro</small></span><span class=\"ds-s\">ENT 08:57</span></button></div>",
+      "css": ".ds-lista { background: #fff; border: 1px solid #d3dae8; border-radius: 10px; overflow: hidden; } .ds-fila { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; width: 100%; min-height: 56px; padding: 0.7rem 0.9rem; background: none; border: 0; text-align: left; font: inherit; } .ds-fila:hover { background: #e3e9f8; } .ds-fila small { color: #4f5a76; font-size: 0.8125rem; } .ds-avatar { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #e3e9f8; color: #17275a; font-weight: 700; font-size: 0.9375rem; } .ds-s { font-family: ui-monospace, Consolas, monospace; font-weight: 700; color: #1e3a8a; border: 1.5px solid currentColor; border-radius: 6px; padding: 0.12rem 0.55rem; }"
+    },
+    {
+      "name": "Menú inferior",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Cuatro destinos fijos en celular; el activo lleva barra de 3px arriba.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-activo\" href=\"#\">Hoy</a><a href=\"#\">Equipo</a><a href=\"#\">Correcciones</a><a href=\"#\">Más</a></nav>",
+      "css": ".ds-nav { display: grid; grid-template-columns: repeat(4, 1fr); height: 4rem; background: #fff; border-top: 1px solid #d3dae8; } .ds-nav a { position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; font-size: 0.8125rem; font-weight: 600; text-decoration: none; color: #4f5a76; } .ds-nav a.ds-activo { color: #1e3a8a; } .ds-nav a.ds-activo::before { content: ''; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; background: #1e3a8a; border-radius: 0 0 3px 3px; } .ds-nav a:focus-visible { outline: 3px solid #2748a8; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La tarjeta de reloj",
+    "overview": "El panel se lee como la tarjeta de un reloj checador: lo normal va en azul de tinta de sello, el retardo en rojo de sello, y cada hora de registro es un sello estampado. La escena de uso es el dueño de una pyme con una mano en el celular, a la luz del día; por eso el tema es claro, de alto contraste, con áreas táctiles de 44 px como mínimo. Manda primero lo urgente (quién falta, qué requiere decisión) y no un tablero de tarjetas con números grandes.",
+    "keyCharacteristics": [
+      "Tema claro único, azul tinta como único acento de marca.",
+      "Plano: profundidad por contorno y tono, sombra solo en el aviso flotante y la caja de acceso.",
+      "La hora es el elemento gráfico: el sello monoespaciado con borde.",
+      "El estado nunca depende solo del color: el borde y el texto lo repiten.",
+      "Áreas táctiles de 44 px; movimiento corto y apagado con prefers-reduced-motion."
+    ],
+    "rules": [
+      { "name": "The Sello Rojo Rule", "body": "El rojo significa retardo, ausencia o error y nada más. No se usa como decoración ni para botones primarios.", "section": "colors" },
+      { "name": "The Color No Basta Rule", "body": "Todo estado con color lleva además texto o un cambio de borde (grueso, punteado, doble).", "section": "colors" },
+      { "name": "The Hora Es Sello Rule", "body": "Una hora de registro se muestra siempre como sello monoespaciado, nunca como texto suelto.", "section": "typography" },
+      { "name": "The Plano Rule", "body": "Las listas y filas no llevan sombra. La elevación solo aparece en lo que flota sobre el contenido.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do poner primero lo urgente: el grupo Faltan va arriba y en rojo.",
+      "Do mostrar toda hora de registro como sello, y distinguir lo corregido con el borde doble.",
+      "Do mantener 44px de área táctil y el anillo de foco de 3px tinta-600.",
+      "Do repetir cada estado de color con texto o con un cambio de borde.",
+      "Do usar los tokens de :root en styles.css en lugar de valores nuevos."
+    ],
+    "donts": [
+      "Don't usar el rojo fuera de retardo, ausencia o error.",
+      "Don't armar tableros de tarjetas con números grandes; las cifras van como chips de conteo.",
+      "Don't poner sombra a listas o filas.",
+      "Don't presentar una señal ámbar como acusación: informa, no culpa.",
+      "Don't mostrar un registro como editable; los cambios son correcciones que se ven como tales."
+    ]
+  }
+}

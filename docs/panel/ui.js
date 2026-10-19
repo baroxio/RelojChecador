@@ -95,8 +95,8 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   const fechaCorta = (fecha, tz) =>
     new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: tz }).format(fecha).replace(".", "");
 
-  function sello(tipo, hora, { retardo = false, corregido = false } = {}) {
-    return h("span", { class: `sello sello--${tipo}${retardo ? " sello--retardo" : ""}${corregido ? " sello--corregido" : ""}` },
+  function sello(tipo, hora, { retardo = false, corregido = false, vacio = false } = {}) {
+    return h("span", { class: `sello sello--${tipo}${retardo ? " sello--retardo" : ""}${corregido ? " sello--corregido" : ""}${vacio ? " sello--vacio" : ""}`, "aria-label": vacio ? "Sin registro" : null },
       h("span", { class: "sello__tipo" }, TIPO_CORTO[tipo] ?? tipo),
       h("span", { class: "sello__hora" }, hora));
   }
@@ -227,7 +227,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           estado.sedes.map((s) => h("option", { value: s.id, selected: estado.sedeFiltro === s.id }, s.nombre)))
       : null;
     const tzBase = estado.sedes[0]?.zona_horaria ?? "America/Mexico_City";
-    const botonActualizar = h("button", { class: "boton boton--secundario", type: "button", "aria-label": "Actualizar", onclick: () => cargar() }, icono("refrescar"), "Actualizar");
+    const botonActualizar = h("button", { class: "boton boton--secundario boton--icono", type: "button", "aria-label": "Actualizar", title: "Actualizar", onclick: () => cargar() }, icono("refrescar"));
     const zona = h("div", {});
     cont.replaceChildren(
       h("div", { class: "cabecera" },
@@ -283,16 +283,13 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         h("a", { class: "boton boton--primario", href: "#/equipo" }, "Ir a Equipo"));
     }
     const cuentas = contarGrupos(filas);
-    const resumen = h("div", { class: "resumen", role: "group", "aria-label": "Resumen del día" },
-      ORDEN_GRUPOS.filter((g) => cuentas[g]).map((g) =>
-        h("span", { class: `chip${g === "faltan" ? " chip--rojo" : ""}` }, `${cuentas[g]} ${TITULO_GRUPO[g].toLowerCase()}`)));
     const grupos = ORDEN_GRUPOS.filter((g) => cuentas[g]).map((g) => {
       const delGrupo = filas.filter((f) => f.grupo === g).sort((a, b) => a.empleado.nombre.localeCompare(b.empleado.nombre, "es"));
       return h("section", { class: `grupo${g === "faltan" ? " grupo--alerta" : ""}`, "aria-labelledby": `g-${g}` },
         h("div", { class: "grupo__titulo" }, h("h2", { id: `g-${g}` }, TITULO_GRUPO[g]), h("span", { class: "grupo__cuenta" }, String(delGrupo.length))),
         h("ul", { class: "lista" }, delGrupo.map(filaEmpleadoHoy)));
     });
-    return h("div", {}, resumen, grupos);
+    return h("div", {}, grupos);
   }
 
   function filaEmpleadoHoy(f) {
@@ -311,11 +308,15 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(f.empleado.nombre)),
       h("span", { style: "min-width:0" },
         h("div", { class: "fila__nombre" }, f.empleado.nombre),
-        h("div", { class: "fila__sub" }, subtituloFila(f), f.retardo > 0 && h("span", { class: "retardo" }, ` · Retardo de ${formatearDuracion(f.retardo)}`))),
+        h("div", { class: "fila__sub" }, subtituloFila(f),
+          f.retardo > 0 && f.ultimo !== primeraEntrada && h("span", { class: "retardo" }, ` · Entró con ${formatearDuracion(f.retardo)} de retardo`))),
       h("span", { class: "fila__fin" },
         f.senales.length > 0 && h("span", { class: "chip chip--aviso" }, `${f.senales.length} ${f.senales.length === 1 ? "señal" : "señales"}`),
-        f.ultimo && sello(f.ultimo.tipo, horaLocal(f.ultimo.instante, f.tz), { retardo: f.retardo > 0 && f.ultimo === primeraEntrada, corregido: f.ultimo.corregido }),
-        h("span", { class: "fila__flecha" }, icono("flecha"))));
+        f.ultimo
+          ? sello(f.ultimo.tipo, horaLocal(f.ultimo.instante, f.tz), { retardo: f.retardo > 0 && f.ultimo === primeraEntrada, corregido: f.ultimo.corregido })
+          : (f.grupo === "faltan" ? sello("entrada", "--:--", { vacio: true }) : null),
+        f.retardo > 0 && f.ultimo === primeraEntrada && h("span", { class: "retardo" }, `Retardo ${formatearDuracion(f.retardo)}`)),
+      h("span", { class: "fila__flecha" }, icono("flecha")));
     return h("li", {}, boton, detalle);
   }
 
@@ -334,9 +335,11 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         contenido.push(h("ul", { class: "cronologia" }, f.registros.map((r) => {
           const extra = porId[r.fuente_id];
           const esPrimera = r === f.registros.find((x) => x.tipo === "entrada");
+          const unico = f.registros.length === 1;
           return h("li", {},
-            sello(r.tipo, horaLocal(r.instante, f.tz), { retardo: esPrimera && f.retardo > 0, corregido: r.corregido }),
+            !unico && sello(r.tipo, horaLocal(r.instante, f.tz), { retardo: esPrimera && f.retardo > 0, corregido: r.corregido }),
             h("span", { class: "meta" }, [
+              unico ? horaLocal(r.instante, f.tz) : null,
               ETIQUETAS_TIPO[r.tipo], CANALES[r.canal] ?? r.canal,
               extra?.distancia_m != null ? `a ${formatearDistancia(extra.distancia_m)} de la sede` : null,
               r.corregido ? `corregido (original ${horaLocal(new Date(r.hora_original ?? r.hora_efectiva), f.tz)})` : null,
@@ -351,14 +354,16 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const ultimoConFoto = [...f.registros].reverse().find((r) => porId[r.fuente_id]?.medio_id);
       const ultimoConMapa = [...f.registros].reverse().find((r) => porId[r.fuente_id]?.lat != null);
       const visor = h("div", {});
+      const botonSelfie = ultimoConFoto && h("button", { class: "boton boton--secundario boton--chico", type: "button",
+        onclick: (e) => verSelfie(e.currentTarget, visor, porId[ultimoConFoto.fuente_id].medio_id, f, ultimoConFoto) }, icono("camara"), "Ver selfie");
       const acciones = h("div", { class: "formulario__acciones" },
-        ultimoConFoto && h("button", { class: "boton boton--secundario boton--chico", type: "button",
-          onclick: (e) => verSelfie(e.currentTarget, visor, porId[ultimoConFoto.fuente_id].medio_id, f, ultimoConFoto) }, icono("camara"), "Ver selfie"),
         ultimoConMapa && h("a", { class: "boton boton--secundario boton--chico", target: "_blank", rel: "noopener noreferrer",
           href: enlaceMapa(porId[ultimoConMapa.fuente_id].lat, porId[ultimoConMapa.fuente_id].lng) }, icono("mapa"), "Ver ubicación"),
         puedeResolver() && h("a", { class: "boton boton--secundario boton--chico", href: `#/correcciones?empleado=${encodeURIComponent(f.empleado.id)}` }, icono("correcciones"), "Pedir corrección"));
-      contenido.push(acciones, visor);
-      cuerpo.replaceChildren(...contenido);
+      contenido.push(acciones);
+      cuerpo.replaceChildren(h("div", { class: "detalle__grid" },
+        h("div", { class: "detalle__selfie" }, botonSelfie, visor),
+        h("div", { class: "detalle__datos" }, contenido)));
     } catch (err) {
       cuerpo.replaceChildren(bloqueError(err, () => pintarDetalleHoy(f, cuerpo)));
     }
@@ -434,8 +439,8 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("div", { class: "fila__nombre" }, e.nombre),
           h("div", { class: "fila__sub" }, [formatearTelefono(e.telefono), estado.sedes.length > 1 ? nombreSede(e.sede_id) : null].filter(Boolean).join(" · "))),
         h("span", { class: "fila__fin" },
-          h("span", { class: `chip${e.estado === "invitado" ? " chip--aviso" : e.estado === "baja" ? " chip--baja" : ""}` }, ETIQUETA_ESTADO[e.estado] ?? e.estado),
-          h("span", { class: "fila__flecha" }, icono("flecha"))));
+          h("span", { class: `chip${e.estado === "invitado" ? " chip--aviso" : e.estado === "baja" ? " chip--baja" : ""}` }, ETIQUETA_ESTADO[e.estado] ?? e.estado)),
+        h("span", { class: "fila__flecha" }, icono("flecha")));
       return h("li", {}, boton, detalle);
     }
 
@@ -476,7 +481,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const caduca = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(inv.expira_at));
       zona.replaceChildren(h("div", { class: "invitacion", style: "margin-top:.75rem" },
         h("p", {}, `Código de ${e.nombre}: `, h("code", {}, inv.codigo)),
-        h("p", { class: "fila__sub" }, `Sirve una sola vez, solo desde el teléfono ${formatearTelefono(e.telefono)}, y vence el ${caduca}. Si generas otra, esta deja de servir.`),
+        h("p", { class: "nota" }, `Sirve una sola vez y solo desde el teléfono ${formatearTelefono(e.telefono)}. Si generas otra invitación, esta deja de servir. Vence el ${caduca}`),
         h("div", { class: "invitacion__acciones" },
           h("a", { class: "boton boton--primario", target: "_blank", rel: "noopener noreferrer", href: enlaceMensajeEmpleado(e.telefono, e.nombre, inv.enlace) }, icono("enviar"), "Enviar por WhatsApp"),
           h("button", { class: "boton boton--secundario", type: "button", onclick: () => copiar(inv.enlace) }, icono("copiar"), "Copiar enlace"))));
@@ -587,7 +592,10 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const emp = nombres[c.empleado_id];
       const tz = tzPorSede()[emp?.sede_id] ?? "America/Mexico_City";
       const orig = porRegistro[c.registro_id];
-      const cuando = (iso) => `${fechaCorta(new Date(iso), tz)} ${horaLocal(new Date(iso), tz)}`;
+      const cuando = (iso) => {
+        const d = new Date(iso);
+        return Number.isNaN(+d) ? "una fecha desconocida" : `${fechaCorta(d, tz)} ${horaLocal(d, tz)}`;
+      };
       if (c.tipo === "agregar") return `Agregar ${ETIQUETAS_TIPO[c.nuevo_tipo]?.toLowerCase() ?? "registro"} el ${cuando(c.nueva_hora)}`;
       if (c.tipo === "modificar_hora") return `Cambiar ${ETIQUETAS_TIPO[orig?.tipo]?.toLowerCase() ?? "registro"} de ${orig ? cuando(orig.ocurrido_at) : "?"} a ${cuando(c.nueva_hora)}`;
       return `Anular ${ETIQUETAS_TIPO[orig?.tipo]?.toLowerCase() ?? "registro"} de ${orig ? cuando(orig.ocurrido_at) : "?"}`;
@@ -601,7 +609,9 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         return;
       }
       lista.replaceChildren(h("ul", { class: "lista" }, filas.map((c) => {
-        const comentario = h("input", { class: "entrada", "aria-label": "Comentario (opcional)", placeholder: "Comentario (opcional)", maxlength: "200" });
+        const comentario = h("input", { class: "entrada", "aria-label": "Comentario (opcional)", placeholder: "Comentario (opcional)", maxlength: "200", hidden: true });
+        const verComentario = h("button", { class: "boton boton--texto boton--chico", type: "button",
+          onclick: () => { comentario.hidden = false; verComentario.hidden = true; comentario.focus(); } }, "Agregar comentario");
         const aprobar = h("button", { class: "boton boton--primario boton--chico", type: "button", onclick: () => resolver(c, true) }, "Aprobar");
         const rechazar = h("button", { class: "boton boton--peligro boton--chico", type: "button", onclick: () => resolver(c, false) }, "Rechazar");
         async function resolver(corr, aprobada) {
@@ -621,8 +631,8 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("div", {}, descripcion(c, porRegistro)),
           h("div", { class: "fila__sub", style: "white-space:normal" }, `Motivo: ${c.motivo}`),
           c.comentario_resolucion && h("div", { class: "fila__sub", style: "white-space:normal" }, `Comentario: ${c.comentario_resolucion}`),
-          c.estado === "pendiente" && puedeResolver() && h("div", { class: "cuadricula cuadricula--2" }, comentario,
-            h("div", { class: "formulario__acciones" }, aprobar, rechazar)));
+          c.estado === "pendiente" && puedeResolver() && h("div", { style: "display:grid; gap:.6rem" },
+            h("div", { class: "formulario__acciones" }, aprobar, rechazar, verComentario), comentario));
       })));
     }
 
