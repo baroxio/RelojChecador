@@ -8,6 +8,7 @@ import {
   extraerCodigoInvitacion,
   extraerMensajes,
   firmaValida,
+  formatearDistancia,
   interpretarBoton,
   interpretarTexto,
   resolverTipoPausa,
@@ -166,4 +167,13 @@ test("destino de WhatsApp: se quita el 1 de los móviles mexicanos", () => {
   assert.equal(destinoWhatsapp("+52 1 33 1284 0590"), "523312840590");
   assert.equal(destinoWhatsapp("15556428542"), "15556428542");
   assert.equal(destinoWhatsapp("5491112345678"), "5491112345678");
+});
+
+test("distancias legibles", () => {
+  assert.equal(formatearDistancia(0), "0 metros");
+  assert.equal(formatearDistancia(849.6), "850 metros");
+  assert.equal(formatearDistancia(1000), "1.0 km");
+  assert.equal(formatearDistancia(12400), "12.4 km");
+  assert.equal(formatearDistancia(637434), "637 km");
+  assert.equal(formatearDistancia(NaN), "una distancia desconocida");
 });

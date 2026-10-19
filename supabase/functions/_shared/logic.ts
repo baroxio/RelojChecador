@@ -185,6 +185,14 @@ export function destinoWhatsapp(waId: string): string {
   return /^521\d{10}$/.test(digitos) ? "52" + digitos.slice(3) : digitos;
 }
 
+/** "850 metros" o "12.4 km": las distancias grandes se leen mejor en kilómetros. */
+export function formatearDistancia(metros: number): string {
+  if (!Number.isFinite(metros) || metros < 0) return "una distancia desconocida";
+  if (metros < 1000) return `${Math.round(metros)} metros`;
+  const km = metros / 1000;
+  return `${km >= 100 ? Math.round(km) : km.toFixed(1)} km`;
+}
+
 // --- Invitaciones ------------------------------------------------------------
 
 // Alfabeto sin 0, 1, I, O para evitar confusiones al teclear.

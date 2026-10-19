@@ -6,6 +6,7 @@ import {
   BOTONES,
   calcularSenales,
   extraerCodigoInvitacion,
+  formatearDistancia,
   interpretarBoton,
   interpretarTexto,
   type Comando,
@@ -232,7 +233,7 @@ async function recibirUbicacion(ctx: Ctx, empleado: Fila, vinculo: Fila, sesion:
   if (!geo?.dentro) {
     await db.from("sesiones_registro").update({ ...base, estado: "rechazada", motivo_rechazo: "fuera_de_geocerca" })
       .eq("id", sesion.id);
-    const lejos = geo?.distancia_m ? ` Estás a unos ${Math.round(geo.distancia_m)} metros de tu sede.` : "";
+    const lejos = geo?.distancia_m ? ` Estás a unos ${formatearDistancia(geo.distancia_m)} de tu sede.` : "";
     await enviarTexto(m.phoneNumberId, m.de, `No pudimos registrar: estás fuera de la zona de tu sede.${lejos} Si es un error, avisa a tu supervisor.`);
     return;
   }
