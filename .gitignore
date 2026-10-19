@@ -17,3 +17,7 @@ __pycache__/
 # Sistema
 .DS_Store
 @eaDir/
+
+# Dependencias de las pruebas del panel
+tests/panel/node_modules/
+tests/panel/package-lock.json

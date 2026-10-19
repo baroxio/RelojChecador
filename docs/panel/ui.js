@@ -1,0 +1,742 @@
+// Interfaz del panel. Todo texto que viene de la base se inserta con textContent (nunca innerHTML),
+// y el único innerHTML es el de los iconos, que son constantes de este archivo.
+import {
+  ETIQUETAS_TIPO, ORDEN_GRUPOS, TIPO_CORTO, TITULO_GRUPO, aUTCdesdeLocal, contarGrupos, enlaceMapa,
+  enlaceMensajeEmpleado, etiquetaSenal, fechaLocal, formatearDistancia, formatearDuracion,
+  formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
+} from "./logic.js";
+
+const SVG = (d, relleno = false) =>
+  `<svg viewBox="0 0 24 24" width="24" height="24" fill="${relleno ? "currentColor" : "none"}" stroke="${relleno ? "none" : "currentColor"}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+
+const ICONOS = {
+  hoy: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  equipo: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.6c2.4.2 4 1.9 4 4.4"/>'),
+  correcciones: SVG('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/>'),
+  mas: SVG('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', true),
+  agregar: SVG('<path d="M12 5v14M5 12h14"/>'),
+  copiar: SVG('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>'),
+  enviar: SVG('<path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4z"/>'),
+  camara: SVG('<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/>'),
+  mapa: SVG('<path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>'),
+  flecha: SVG('<path d="M6 9l6 6 6-6"/>'),
+  refrescar: SVG('<path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/>'),
+  salir: SVG('<path d="M10 4H5v16h5"/><path d="M15 8l4 4-4 4M19 12H9"/>'),
+};
+
+function icono(nombre) {
+  const t = document.createElement("template");
+  t.innerHTML = ICONOS[nombre];
+  return t.content.firstChild;
+}
+
+function h(tag, props = {}, ...hijos) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props ?? {})) {
+    if (v === false || v == null) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v === true) el.setAttribute(k, "");
+    else el.setAttribute(k, v);
+  }
+  for (const c of hijos.flat(Infinity)) {
+    if (c == null || c === false) continue;
+    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+
+const CANALES = { whatsapp: "WhatsApp", web: "Web", app: "App", kiosco: "Kiosco", manual: "Registro manual" };
+const ROLES = { dueno: "Dueño", admin: "Administrador", supervisor: "Supervisor", consulta: "Consulta" };
+const ETIQUETA_ESTADO = { invitado: "Invitado", activo: "Activo", baja: "Baja" };
+
+export function iniciarApp({ sb, url, key, raiz, avisos }) {
+  const estado = { sesion: null, miembro: null, empresa: null, sedes: [], sedeFiltro: "todas", ruta: 0, pendientes: 0 };
+  let temporizador = null;
+
+  // ---------- Utilidades ----------
+  const q = async (promesa) => {
+    const { data, error } = await promesa;
+    if (error) throw error;
+    return data;
+  };
+  const tzPorSede = () => Object.fromEntries(estado.sedes.map((s) => [s.id, s.zona_horaria]));
+  const nombreSede = (id) => estado.sedes.find((s) => s.id === id)?.nombre ?? "";
+  const puedeAdministrar = () => ["dueno", "admin"].includes(estado.miembro?.rol);
+  const puedeResolver = () => ["dueno", "admin", "supervisor"].includes(estado.miembro?.rol);
+
+  function avisar(texto, tipo = "ok") {
+    if (!avisos) return;
+    const el = h("div", { class: `aviso-flotante${tipo === "error" ? " aviso-flotante--error" : ""}` }, texto);
+    avisos.append(el);
+    setTimeout(() => el.remove(), 4500);
+  }
+
+  function mensajeDeError(err) {
+    const m = String(err?.message ?? err ?? "");
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Sin conexión. Revisa tu internet e intenta de nuevo.";
+    if (err?.code === "23505") return "Ya existe un registro igual (por ejemplo, ese teléfono en tu empresa).";
+    if (err?.code === "42501" || /row-level security|permission denied/i.test(m)) return "No tienes permiso para hacer esto.";
+    return m || "Algo salió mal. Intenta de nuevo.";
+  }
+
+  function esqueletos(n = 4) {
+    return h("ul", { class: "lista", "aria-hidden": "true" }, Array.from({ length: n }, () => h("li", { class: "esqueleto" })));
+  }
+
+  function bloqueError(err, reintentar) {
+    return h("div", { class: "vacio" },
+      h("div", { class: "aviso-bloque aviso-bloque--error" }, mensajeDeError(err)),
+      reintentar && h("button", { class: "boton boton--secundario", type: "button", onclick: reintentar }, "Reintentar"));
+  }
+
+  const fechaLarga = (fecha, tz) =>
+    new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(fecha);
+  const fechaCorta = (fecha, tz) =>
+    new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: tz }).format(fecha).replace(".", "");
+
+  function sello(tipo, hora, { retardo = false, corregido = false } = {}) {
+    return h("span", { class: `sello sello--${tipo}${retardo ? " sello--retardo" : ""}${corregido ? " sello--corregido" : ""}` },
+      h("span", { class: "sello__tipo" }, TIPO_CORTO[tipo] ?? tipo),
+      h("span", { class: "sello__hora" }, hora));
+  }
+
+  // ---------- Pantallas de acceso ----------
+  function pantallaSinConfigurar() {
+    raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" },
+      h("h1", {}, "Falta configurar el panel"),
+      h("p", {}, "Pega la clave publicable de Supabase en docs/panel/config.js y vuelve a publicar. Es la clave pública (no la secreta)."))));
+  }
+
+  function pantallaAcceso(mensaje) {
+    const correo = h("input", { class: "entrada", id: "correo", type: "email", autocomplete: "username", required: true, inputmode: "email" });
+    const clave = h("input", { class: "entrada", id: "clave", type: "password", autocomplete: "current-password", required: true });
+    const error = h("div", { class: "aviso-bloque aviso-bloque--error", role: "alert", hidden: !mensaje }, mensaje ?? "");
+    const boton = h("button", { class: "boton boton--primario boton--ancho", type: "submit" }, "Entrar");
+    const form = h("form", { class: "acceso__caja", novalidate: true,
+      onsubmit: async (e) => {
+        e.preventDefault();
+        error.hidden = true;
+        if (!correo.value.trim() || !clave.value) { error.textContent = "Escribe tu correo y tu contraseña."; error.hidden = false; return; }
+        boton.setAttribute("aria-busy", "true"); boton.disabled = true;
+        const { error: err } = await sb.auth.signInWithPassword({ email: correo.value.trim(), password: clave.value });
+        boton.removeAttribute("aria-busy"); boton.disabled = false;
+        if (err) { error.textContent = "Correo o contraseña incorrectos."; error.hidden = false; clave.value = ""; clave.focus(); return; }
+        await arrancarConSesion();
+      } },
+      h("div", { class: "marca" }, icono("hoy"), "RelojChecador"),
+      h("div", {}, h("h1", {}, "Entrar al panel"), h("p", {}, "Usa el correo con el que te dieron acceso.")),
+      error,
+      h("div", { class: "campo" }, h("label", { for: "correo" }, "Correo"), correo),
+      h("div", { class: "campo" }, h("label", { for: "clave" }, "Contraseña"), clave),
+      boton);
+    raiz.replaceChildren(h("div", { class: "acceso" }, form));
+    correo.focus();
+  }
+
+  function pantallaSinAcceso(correoUsuario) {
+    raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" },
+      h("h1", {}, "Tu usuario no tiene empresa asignada"),
+      h("p", {}, `Entraste como ${correoUsuario}, pero todavía no te agregan a ninguna empresa. Pide al dueño que te dé acceso.`),
+      h("button", { class: "boton boton--secundario", type: "button", onclick: cerrarSesion }, "Cerrar sesión"))));
+  }
+
+  async function cerrarSesion() {
+    clearInterval(temporizador);
+    await sb.auth.signOut();
+    estado.sesion = null; estado.miembro = null;
+    pantallaAcceso();
+  }
+
+  // ---------- Carga del perfil y estructura ----------
+  async function arrancarConSesion() {
+    const { data } = await sb.auth.getSession();
+    estado.sesion = data?.session ?? null;
+    if (!estado.sesion) return pantallaAcceso();
+    raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" }, h("p", {}, "Cargando tu empresa…"))));
+    try {
+      const miembros = await q(sb.from("miembros").select("id,empresa_id,rol").eq("user_id", estado.sesion.user.id).eq("activo", true));
+      if (!miembros.length) return pantallaSinAcceso(estado.sesion.user.email);
+      estado.miembro = miembros[0];
+      const [empresas, sedes] = await Promise.all([
+        q(sb.from("empresas").select("id,nombre").eq("id", estado.miembro.empresa_id)),
+        q(sb.from("sedes").select("id,nombre,zona_horaria,activa").order("nombre")),
+      ]);
+      estado.empresa = empresas[0] ?? { nombre: "Tu empresa" };
+      estado.sedes = sedes.filter((s) => s.activa);
+    } catch (err) {
+      raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" }, bloqueError(err, arrancarConSesion))));
+      return;
+    }
+    construirEstructura();
+    await actualizarPendientes();
+    rutear();
+  }
+
+  function construirEstructura() {
+    const enlaces = [
+      ["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"],
+      ["correcciones", "Correcciones", "#/correcciones"], ["mas", "Más", "#/mas"],
+    ];
+    const nav = h("nav", { class: "nav", "aria-label": "Principal" }, enlaces.map(([id, texto, href]) =>
+      h("a", { href, "data-ruta": id }, icono(id), h("span", {}, texto),
+        id === "correcciones" && h("span", { class: "nav__aviso", id: "aviso-correcciones", hidden: true }))));
+    raiz.replaceChildren(h("div", { class: "app" },
+      h("header", { class: "barra" },
+        h("div", { class: "marca" }, icono("hoy"), "RelojChecador"),
+        h("div", { class: "barra__empresa" }, estado.empresa?.nombre ?? "")),
+      nav,
+      h("main", { class: "contenido", id: "contenido", tabindex: "-1" })));
+  }
+
+  async function actualizarPendientes() {
+    if (!puedeResolver()) return;
+    try {
+      const { count } = await sb.from("correcciones").select("id", { count: "exact", head: true }).eq("estado", "pendiente");
+      estado.pendientes = count ?? 0;
+    } catch { estado.pendientes = 0; }
+    const el = document.getElementById("aviso-correcciones");
+    if (el) { el.hidden = !estado.pendientes; el.textContent = String(estado.pendientes); }
+  }
+
+  // ---------- Rutas ----------
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, mas: vistaMas };
+
+  function rutear() {
+    clearInterval(temporizador);
+    if (!estado.sesion || !estado.miembro) return;
+    const [camino, consulta] = (location.hash || "#/hoy").replace(/^#\//, "").split("?");
+    const nombre = RUTAS[camino] ? camino : "hoy";
+    const parametros = new URLSearchParams(consulta ?? "");
+    estado.ruta += 1;
+    const miRuta = estado.ruta;
+    document.querySelectorAll(".nav a").forEach((a) => {
+      if (a.dataset.ruta === nombre) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+    const cont = document.getElementById("contenido");
+    document.title = `${nombre[0].toUpperCase()}${nombre.slice(1)} | RelojChecador`;
+    RUTAS[nombre](cont, { vigente: () => estado.ruta === miRuta, parametros });
+    window.scrollTo?.(0, 0);
+  }
+
+  // ---------- Hoy ----------
+  async function vistaHoy(cont, ctx) {
+    const selector = estado.sedes.length > 1
+      ? h("select", { class: "entrada", "aria-label": "Sede", style: "width:auto", onchange: (e) => { estado.sedeFiltro = e.target.value; cargar(); } },
+          h("option", { value: "todas" }, "Todas las sedes"),
+          estado.sedes.map((s) => h("option", { value: s.id, selected: estado.sedeFiltro === s.id }, s.nombre)))
+      : null;
+    const tzBase = estado.sedes[0]?.zona_horaria ?? "America/Mexico_City";
+    const botonActualizar = h("button", { class: "boton boton--secundario", type: "button", "aria-label": "Actualizar", onclick: () => cargar() }, icono("refrescar"), "Actualizar");
+    const zona = h("div", {});
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Hoy"), h("p", {}, fechaLarga(new Date(), tzBase))),
+        h("div", { class: "cabecera__acciones" }, selector, botonActualizar)),
+      zona);
+
+    async function cargar(silencioso = false) {
+      if (!silencioso) zona.replaceChildren(esqueletos(5));
+      try {
+        const desde = new Date(Date.now() - 36 * 3600_000).toISOString();
+        const [empleados, registros, horarios, horarioDias, empleadoHorarios] = await Promise.all([
+          q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id").eq("estado", "activo")),
+          q(sb.from("registros_efectivos").select("origen,fuente_id,empleado_id,sede_id,tipo,hora_efectiva,hora_original,canal,senales,medio_id,corregido").gte("hora_efectiva", desde)),
+          q(sb.from("horarios").select("id,tolerancia_retardo_min")),
+          q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada")),
+          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia")),
+        ]);
+        if (!ctx.vigente()) return;
+        const filtrados = empleados.filter((e) => estado.sedeFiltro === "todas" || e.sede_id === estado.sedeFiltro);
+        const filas = resumenDelDia(filtrados, registros, new Date(), tzPorSede(), { horarios, horarioDias, empleadoHorarios });
+        zona.replaceChildren(pintarHoy(filas));
+      } catch (err) {
+        if (ctx.vigente()) zona.replaceChildren(bloqueError(err, () => cargar()));
+      }
+    }
+    await cargar();
+    temporizador = setInterval(() => { if (ctx.vigente()) cargar(true); }, 60_000);
+  }
+
+  function subtituloFila(f) {
+    const sede = estado.sedes.length > 1 ? `${nombreSede(f.empleado.sede_id)} · ` : "";
+    const primeraEntrada = f.registros.find((r) => r.tipo === "entrada");
+    switch (f.grupo) {
+      case "faltan": return sede + (f.horario?.entradas?.length ? `Sin registro · entrada esperada ${f.horario.entradas[0]}` : "Sin registro hoy");
+      case "por_llegar": return sede + `Entrada esperada ${f.horario.entradas[0]}`;
+      case "en_turno": return sede + (f.desdeAyer ? "Turno abierto desde ayer" : `Entró ${primeraEntrada ? horaLocal(primeraEntrada.instante, f.tz) : ""}`);
+      case "en_pausa": return sede + `En pausa desde ${horaLocal(f.ultimo.instante, f.tz)}`;
+      case "salieron": {
+        if (!primeraEntrada) return sede + "Salió";
+        const min = Math.round((f.ultimo.instante - primeraEntrada.instante) / 60000);
+        return sede + `Jornada de ${formatearDuracion(Math.max(min, 0))}`;
+      }
+      default: return sede + "Día de descanso";
+    }
+  }
+
+  function pintarHoy(filas) {
+    if (!filas.length) {
+      return h("div", { class: "vacio" },
+        h("h2", {}, "Todavía no hay empleados activos"),
+        h("p", {}, "Cuando invites a tu primer empleado y acepte el aviso de privacidad por WhatsApp, aparecerá aquí."),
+        h("a", { class: "boton boton--primario", href: "#/equipo" }, "Ir a Equipo"));
+    }
+    const cuentas = contarGrupos(filas);
+    const resumen = h("div", { class: "resumen", role: "group", "aria-label": "Resumen del día" },
+      ORDEN_GRUPOS.filter((g) => cuentas[g]).map((g) =>
+        h("span", { class: `chip${g === "faltan" ? " chip--rojo" : ""}` }, `${cuentas[g]} ${TITULO_GRUPO[g].toLowerCase()}`)));
+    const grupos = ORDEN_GRUPOS.filter((g) => cuentas[g]).map((g) => {
+      const delGrupo = filas.filter((f) => f.grupo === g).sort((a, b) => a.empleado.nombre.localeCompare(b.empleado.nombre, "es"));
+      return h("section", { class: `grupo${g === "faltan" ? " grupo--alerta" : ""}`, "aria-labelledby": `g-${g}` },
+        h("div", { class: "grupo__titulo" }, h("h2", { id: `g-${g}` }, TITULO_GRUPO[g]), h("span", { class: "grupo__cuenta" }, String(delGrupo.length))),
+        h("ul", { class: "lista" }, delGrupo.map(filaEmpleadoHoy)));
+    });
+    return h("div", {}, resumen, grupos);
+  }
+
+  function filaEmpleadoHoy(f) {
+    const detalle = h("div", { class: "detalle", hidden: true });
+    const idDetalle = `d-${f.empleado.id}`;
+    detalle.id = idDetalle;
+    let cargado = false;
+    const primeraEntrada = f.registros.find((r) => r.tipo === "entrada");
+    const boton = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": idDetalle,
+      onclick: () => {
+        const abierto = boton.getAttribute("aria-expanded") === "true";
+        boton.setAttribute("aria-expanded", String(!abierto));
+        detalle.hidden = abierto;
+        if (!abierto && !cargado) { cargado = true; pintarDetalleHoy(f, detalle); }
+      } },
+      h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(f.empleado.nombre)),
+      h("span", { style: "min-width:0" },
+        h("div", { class: "fila__nombre" }, f.empleado.nombre),
+        h("div", { class: "fila__sub" }, subtituloFila(f), f.retardo > 0 && h("span", { class: "retardo" }, ` · Retardo de ${formatearDuracion(f.retardo)}`))),
+      h("span", { class: "fila__fin" },
+        f.senales.length > 0 && h("span", { class: "chip chip--aviso" }, `${f.senales.length} ${f.senales.length === 1 ? "señal" : "señales"}`),
+        f.ultimo && sello(f.ultimo.tipo, horaLocal(f.ultimo.instante, f.tz), { retardo: f.retardo > 0 && f.ultimo === primeraEntrada, corregido: f.ultimo.corregido }),
+        h("span", { class: "fila__flecha" }, icono("flecha"))));
+    return h("li", {}, boton, detalle);
+  }
+
+  async function pintarDetalleHoy(f, cuerpo) {
+    cuerpo.replaceChildren(esqueletos(2));
+    try {
+      const ids = f.registros.filter((r) => r.origen === "registro").map((r) => r.fuente_id);
+      const reales = ids.length
+        ? await q(sb.from("registros").select("id,lat,lng,distancia_m,dentro_geocerca,medio_id").in("id", ids))
+        : [];
+      const porId = Object.fromEntries(reales.map((r) => [r.id, r]));
+      const contenido = [];
+      if (!f.registros.length) {
+        contenido.push(h("p", { style: "margin-top:.75rem" }, `Todavía no hay registros hoy. Teléfono: ${formatearTelefono(f.empleado.telefono)}.`));
+      } else {
+        contenido.push(h("ul", { class: "cronologia" }, f.registros.map((r) => {
+          const extra = porId[r.fuente_id];
+          const esPrimera = r === f.registros.find((x) => x.tipo === "entrada");
+          return h("li", {},
+            sello(r.tipo, horaLocal(r.instante, f.tz), { retardo: esPrimera && f.retardo > 0, corregido: r.corregido }),
+            h("span", { class: "meta" }, [
+              ETIQUETAS_TIPO[r.tipo], CANALES[r.canal] ?? r.canal,
+              extra?.distancia_m != null ? `a ${formatearDistancia(extra.distancia_m)} de la sede` : null,
+              r.corregido ? `corregido (original ${horaLocal(new Date(r.hora_original ?? r.hora_efectiva), f.tz)})` : null,
+            ].filter(Boolean).join(" · ")));
+        })));
+        if (f.senales.length) {
+          contenido.push(h("div", {}, h("h3", { style: "margin-bottom:.4rem" }, "Señales para revisar"),
+            h("ul", { class: "senales" }, f.senales.map((s) => h("li", {}, etiquetaSenal(s)))),
+            h("p", { class: "fila__sub", style: "margin-top:.4rem" }, "Una señal no prueba nada: solo avisa que conviene mirar el registro.")));
+        }
+      }
+      const ultimoConFoto = [...f.registros].reverse().find((r) => porId[r.fuente_id]?.medio_id);
+      const ultimoConMapa = [...f.registros].reverse().find((r) => porId[r.fuente_id]?.lat != null);
+      const visor = h("div", {});
+      const acciones = h("div", { class: "formulario__acciones" },
+        ultimoConFoto && h("button", { class: "boton boton--secundario boton--chico", type: "button",
+          onclick: (e) => verSelfie(e.currentTarget, visor, porId[ultimoConFoto.fuente_id].medio_id, f, ultimoConFoto) }, icono("camara"), "Ver selfie"),
+        ultimoConMapa && h("a", { class: "boton boton--secundario boton--chico", target: "_blank", rel: "noopener noreferrer",
+          href: enlaceMapa(porId[ultimoConMapa.fuente_id].lat, porId[ultimoConMapa.fuente_id].lng) }, icono("mapa"), "Ver ubicación"),
+        puedeResolver() && h("a", { class: "boton boton--secundario boton--chico", href: `#/correcciones?empleado=${encodeURIComponent(f.empleado.id)}` }, icono("correcciones"), "Pedir corrección"));
+      contenido.push(acciones, visor);
+      cuerpo.replaceChildren(...contenido);
+    } catch (err) {
+      cuerpo.replaceChildren(bloqueError(err, () => pintarDetalleHoy(f, cuerpo)));
+    }
+  }
+
+  async function verSelfie(boton, visor, medioId, f, registro) {
+    boton.setAttribute("aria-busy", "true"); boton.disabled = true;
+    try {
+      const medios = await q(sb.from("medios").select("ruta_storage").eq("id", medioId));
+      if (!medios.length) throw new Error("No se encontró la selfie.");
+      const { data, error } = await sb.storage.from("selfies").createSignedUrl(medios[0].ruta_storage, 300);
+      if (error) throw error;
+      visor.replaceChildren(h("img", { class: "selfie", src: data.signedUrl, alt: `Selfie de ${f.empleado.nombre} a las ${horaLocal(registro.instante, f.tz)}` }));
+      boton.hidden = true;
+    } catch (err) {
+      avisar(mensajeDeError(err), "error");
+    } finally {
+      boton.removeAttribute("aria-busy"); boton.disabled = false;
+    }
+  }
+
+  // ---------- Equipo ----------
+  async function vistaEquipo(cont, ctx) {
+    const lista = h("div", {});
+    const buscador = h("input", { class: "entrada", type: "search", placeholder: "Buscar por nombre o teléfono", "aria-label": "Buscar empleado", style: "margin-bottom:.75rem" });
+    const espacioForm = h("div", {});
+    const botonAgregar = puedeAdministrar()
+      ? h("button", { class: "boton boton--primario", type: "button", onclick: () => mostrarFormulario() }, icono("agregar"), "Agregar")
+      : null;
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Equipo"), h("p", {}, "Tus empleados y su acceso por WhatsApp")),
+        h("div", { class: "cabecera__acciones" }, botonAgregar)),
+      espacioForm, buscador, lista);
+
+    let empleados = [];
+    async function cargar() {
+      lista.replaceChildren(esqueletos(4));
+      try {
+        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado").order("nombre"));
+        if (ctx.vigente()) pintar();
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function pintar() {
+      const t = buscador.value.trim().toLowerCase();
+      const visibles = empleados.filter((e) => !t || e.nombre.toLowerCase().includes(t) || (e.telefono ?? "").includes(t.replace(/\D/g, "") || "§"));
+      if (!empleados.length) {
+        lista.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "Aún no hay empleados"),
+          h("p", {}, "Agrega a tu primer empleado con su nombre y teléfono; después le mandas la invitación por WhatsApp."),
+          puedeAdministrar() && h("button", { class: "boton boton--primario", type: "button", onclick: () => mostrarFormulario() }, icono("agregar"), "Agregar empleado")));
+        return;
+      }
+      if (!visibles.length) { lista.replaceChildren(h("div", { class: "vacio" }, h("p", {}, "Nadie coincide con esa búsqueda."))); return; }
+      const orden = { invitado: 0, activo: 1, baja: 2 };
+      visibles.sort((a, b) => orden[a.estado] - orden[b.estado] || a.nombre.localeCompare(b.nombre, "es"));
+      lista.replaceChildren(h("ul", { class: "lista" }, visibles.map(filaEquipo)));
+    }
+
+    function filaEquipo(e) {
+      const detalle = h("div", { class: "detalle", hidden: true });
+      const id = `eq-${e.id}`;
+      detalle.id = id;
+      const boton = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": id,
+        onclick: () => {
+          const abierto = boton.getAttribute("aria-expanded") === "true";
+          boton.setAttribute("aria-expanded", String(!abierto));
+          detalle.hidden = abierto;
+          if (!abierto) pintarAcciones(e, detalle);
+        } },
+        h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(e.nombre)),
+        h("span", { style: "min-width:0" },
+          h("div", { class: "fila__nombre" }, e.nombre),
+          h("div", { class: "fila__sub" }, [formatearTelefono(e.telefono), estado.sedes.length > 1 ? nombreSede(e.sede_id) : null].filter(Boolean).join(" · "))),
+        h("span", { class: "fila__fin" },
+          h("span", { class: `chip${e.estado === "invitado" ? " chip--aviso" : e.estado === "baja" ? " chip--baja" : ""}` }, ETIQUETA_ESTADO[e.estado] ?? e.estado),
+          h("span", { class: "fila__flecha" }, icono("flecha"))));
+      return h("li", {}, boton, detalle);
+    }
+
+    function pintarAcciones(e, cuerpo) {
+      const zonaInvitacion = h("div", {});
+      const acciones = h("div", { class: "formulario__acciones", style: "margin-top:.75rem" });
+      if (e.estado === "baja") {
+        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Este empleado está dado de baja. Su historial se conserva."));
+        return;
+      }
+      if (!puedeAdministrar()) {
+        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Solo el dueño o un administrador pueden invitar o dar de baja."));
+        return;
+      }
+      const invitar = h("button", { class: "boton boton--primario boton--chico", type: "button",
+        onclick: async () => {
+          invitar.setAttribute("aria-busy", "true"); invitar.disabled = true;
+          try { pintarInvitacion(zonaInvitacion, e, await crearInvitacion(e.id)); }
+          catch (err) { avisar(mensajeDeError(err), "error"); }
+          finally { invitar.removeAttribute("aria-busy"); invitar.disabled = false; }
+        } }, icono("enviar"), e.estado === "invitado" ? "Invitar por WhatsApp" : "Volver a invitar");
+      let confirmando = false;
+      const baja = h("button", { class: "boton boton--peligro boton--chico", type: "button",
+        onclick: async () => {
+          if (!confirmando) { confirmando = true; baja.textContent = "Confirmar baja"; setTimeout(() => { confirmando = false; baja.textContent = "Dar de baja"; }, 5000); return; }
+          baja.disabled = true;
+          try {
+            await q(sb.from("empleados").update({ estado: "baja", fecha_baja: fechaLocal(new Date(), "America/Mexico_City") }).eq("id", e.id));
+            avisar(`${e.nombre} quedó dado de baja.`);
+            await cargar();
+          } catch (err) { avisar(mensajeDeError(err), "error"); baja.disabled = false; }
+        } }, "Dar de baja");
+      acciones.append(invitar, baja);
+      cuerpo.replaceChildren(acciones, zonaInvitacion);
+    }
+
+    function pintarInvitacion(zona, e, inv) {
+      const caduca = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(inv.expira_at));
+      zona.replaceChildren(h("div", { class: "invitacion", style: "margin-top:.75rem" },
+        h("p", {}, `Código de ${e.nombre}: `, h("code", {}, inv.codigo)),
+        h("p", { class: "fila__sub" }, `Sirve una sola vez, solo desde el teléfono ${formatearTelefono(e.telefono)}, y vence el ${caduca}. Si generas otra, esta deja de servir.`),
+        h("div", { class: "invitacion__acciones" },
+          h("a", { class: "boton boton--primario", target: "_blank", rel: "noopener noreferrer", href: enlaceMensajeEmpleado(e.telefono, e.nombre, inv.enlace) }, icono("enviar"), "Enviar por WhatsApp"),
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => copiar(inv.enlace) }, icono("copiar"), "Copiar enlace"))));
+    }
+
+    function mostrarFormulario() {
+      if (espacioForm.firstChild) { espacioForm.replaceChildren(); return; }
+      const nombre = h("input", { class: "entrada", id: "n-nombre", autocomplete: "off", required: true });
+      const telefono = h("input", { class: "entrada", id: "n-tel", type: "tel", inputmode: "tel", autocomplete: "off", placeholder: "33 1234 5678", required: true });
+      const sede = h("select", { class: "entrada", id: "n-sede" }, estado.sedes.map((s) => h("option", { value: s.id }, s.nombre)));
+      const numero = h("input", { class: "entrada", id: "n-num", autocomplete: "off" });
+      const errNombre = h("div", { class: "error-campo", hidden: true }); const errTel = h("div", { class: "error-campo", hidden: true });
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Guardar empleado");
+      const form = h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault();
+          errNombre.hidden = errTel.hidden = true; nombre.removeAttribute("aria-invalid"); telefono.removeAttribute("aria-invalid");
+          const tel = normalizarTelefonoMx(telefono.value);
+          let mal = false;
+          if (nombre.value.trim().length < 2) { errNombre.textContent = "Escribe el nombre del empleado."; errNombre.hidden = false; nombre.setAttribute("aria-invalid", "true"); mal = true; }
+          if (!tel) { errTel.textContent = "Escribe un celular de 10 dígitos, por ejemplo 33 1234 5678."; errTel.hidden = false; telefono.setAttribute("aria-invalid", "true"); mal = true; }
+          if (!estado.sedes.length) { avisar("Primero hace falta una sede. Pídele al dueño que la cree.", "error"); mal = true; }
+          if (mal) return;
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            await q(sb.from("empleados").insert({
+              empresa_id: estado.miembro.empresa_id, sede_id: sede.value, nombre: nombre.value.trim(),
+              telefono: tel, num_empleado: numero.value.trim() || null,
+            }));
+            avisar(`${nombre.value.trim()} se agregó. Ahora invítalo por WhatsApp.`);
+            espacioForm.replaceChildren();
+            await cargar();
+          } catch (err) {
+            if (err?.code === "23505") { errTel.textContent = "Ese teléfono o número de empleado ya existe en tu empresa."; errTel.hidden = false; }
+            else avisar(mensajeDeError(err), "error");
+          } finally { guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } },
+        h("h2", {}, "Nuevo empleado"),
+        h("div", { class: "campo" }, h("label", { for: "n-nombre" }, "Nombre completo"), nombre, errNombre),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "n-tel" }, "Celular (WhatsApp)"), telefono, errTel),
+          h("div", { class: "campo" }, h("label", { for: "n-sede" }, "Sede"), sede)),
+        h("div", { class: "campo" }, h("label", { for: "n-num" }, "Número de empleado (opcional)"), numero),
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar")));
+      espacioForm.replaceChildren(form);
+      nombre.focus();
+    }
+
+    buscador.addEventListener("input", pintar);
+    await cargar();
+  }
+
+  async function crearInvitacion(empleadoId) {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch(`${url}/functions/v1/crear-invitacion`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}`, apikey: key },
+      body: JSON.stringify({ empleado_id: empleadoId }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || j.message || "No se pudo crear la invitación.");
+    return j;
+  }
+
+  async function copiar(texto) {
+    try { await navigator.clipboard.writeText(texto); avisar("Enlace copiado."); }
+    catch { avisar("No se pudo copiar. Mantén presionado el enlace para copiarlo.", "error"); }
+  }
+
+  // ---------- Correcciones ----------
+  async function vistaCorrecciones(cont, ctx) {
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    let pestana = "pendientes";
+    const botones = {
+      pendientes: h("button", { class: "boton boton--secundario boton--chico", type: "button", "aria-pressed": "true", onclick: () => cambiar("pendientes") }, "Pendientes"),
+      historial: h("button", { class: "boton boton--secundario boton--chico", type: "button", "aria-pressed": "false", onclick: () => cambiar("historial") }, "Historial"),
+    };
+    function cambiar(p) { pestana = p; for (const [k, b] of Object.entries(botones)) b.setAttribute("aria-pressed", String(k === p)); cargar(); }
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Correcciones"), h("p", {}, "Los registros no se editan: se corrigen aquí y queda constancia")),
+        h("div", { class: "cabecera__acciones" }, puedeResolver() && h("button", { class: "boton boton--primario", type: "button", onclick: () => mostrarFormulario() }, icono("agregar"), "Nueva"))),
+      espacioForm,
+      h("div", { class: "resumen" }, botones.pendientes, botones.historial),
+      lista);
+
+    let nombres = {}; let empleados = [];
+    async function cargar() {
+      lista.replaceChildren(esqueletos(3));
+      try {
+        empleados = await q(sb.from("empleados").select("id,nombre,sede_id,estado").order("nombre"));
+        nombres = Object.fromEntries(empleados.map((e) => [e.id, e]));
+        const consulta = sb.from("correcciones").select("id,empleado_id,registro_id,tipo,nuevo_tipo,nueva_hora,motivo,origen,estado,creada_at,resuelto_at,comentario_resolucion");
+        const filas = pestana === "pendientes"
+          ? await q(consulta.eq("estado", "pendiente").order("creada_at", { ascending: false }))
+          : await q(consulta.neq("estado", "pendiente").order("creada_at", { ascending: false }).limit(30));
+        const ids = [...new Set(filas.map((f) => f.registro_id).filter(Boolean))];
+        const originales = ids.length ? await q(sb.from("registros").select("id,tipo,ocurrido_at").in("id", ids)) : [];
+        const porRegistro = Object.fromEntries(originales.map((r) => [r.id, r]));
+        if (!ctx.vigente()) return;
+        pintar(filas, porRegistro);
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function descripcion(c, porRegistro) {
+      const emp = nombres[c.empleado_id];
+      const tz = tzPorSede()[emp?.sede_id] ?? "America/Mexico_City";
+      const orig = porRegistro[c.registro_id];
+      const cuando = (iso) => `${fechaCorta(new Date(iso), tz)} ${horaLocal(new Date(iso), tz)}`;
+      if (c.tipo === "agregar") return `Agregar ${ETIQUETAS_TIPO[c.nuevo_tipo]?.toLowerCase() ?? "registro"} el ${cuando(c.nueva_hora)}`;
+      if (c.tipo === "modificar_hora") return `Cambiar ${ETIQUETAS_TIPO[orig?.tipo]?.toLowerCase() ?? "registro"} de ${orig ? cuando(orig.ocurrido_at) : "?"} a ${cuando(c.nueva_hora)}`;
+      return `Anular ${ETIQUETAS_TIPO[orig?.tipo]?.toLowerCase() ?? "registro"} de ${orig ? cuando(orig.ocurrido_at) : "?"}`;
+    }
+
+    function pintar(filas, porRegistro) {
+      if (!filas.length) {
+        lista.replaceChildren(h("div", { class: "vacio" },
+          h("h2", {}, pestana === "pendientes" ? "No hay correcciones pendientes" : "Todavía no hay historial"),
+          h("p", {}, pestana === "pendientes" ? "Cuando alguien pida cambiar, agregar o anular un registro, lo verás aquí para aprobarlo o rechazarlo." : "Aquí quedan las correcciones ya resueltas.")));
+        return;
+      }
+      lista.replaceChildren(h("ul", { class: "lista" }, filas.map((c) => {
+        const comentario = h("input", { class: "entrada", "aria-label": "Comentario (opcional)", placeholder: "Comentario (opcional)", maxlength: "200" });
+        const aprobar = h("button", { class: "boton boton--primario boton--chico", type: "button", onclick: () => resolver(c, true) }, "Aprobar");
+        const rechazar = h("button", { class: "boton boton--peligro boton--chico", type: "button", onclick: () => resolver(c, false) }, "Rechazar");
+        async function resolver(corr, aprobada) {
+          aprobar.disabled = rechazar.disabled = true;
+          try {
+            await q(sb.rpc("resolver_correccion", { p_id: corr.id, p_aprobar: aprobada, p_comentario: comentario.value.trim() || null }));
+            avisar(aprobada ? "Corrección aprobada." : "Corrección rechazada.");
+            await actualizarPendientes();
+            await cargar();
+          } catch (err) { avisar(mensajeDeError(err), "error"); aprobar.disabled = rechazar.disabled = false; }
+        }
+        return h("li", { style: "padding:.8rem .9rem; display:grid; gap:.5rem" },
+          h("div", { style: "display:flex; gap:.5rem; align-items:baseline; flex-wrap:wrap" },
+            h("strong", {}, nombres[c.empleado_id]?.nombre ?? "Empleado"),
+            h("span", { class: `chip${c.estado === "aprobada" ? " chip--ok" : c.estado === "rechazada" ? " chip--rojo" : " chip--aviso"}` },
+              c.estado === "pendiente" ? "Pendiente" : c.estado === "aprobada" ? "Aprobada" : "Rechazada")),
+          h("div", {}, descripcion(c, porRegistro)),
+          h("div", { class: "fila__sub", style: "white-space:normal" }, `Motivo: ${c.motivo}`),
+          c.comentario_resolucion && h("div", { class: "fila__sub", style: "white-space:normal" }, `Comentario: ${c.comentario_resolucion}`),
+          c.estado === "pendiente" && puedeResolver() && h("div", { class: "cuadricula cuadricula--2" }, comentario,
+            h("div", { class: "formulario__acciones" }, aprobar, rechazar)));
+      })));
+    }
+
+    function mostrarFormulario(preseleccion) {
+      if (espacioForm.firstChild && !preseleccion) { espacioForm.replaceChildren(); return; }
+      const activos = empleados.filter((e) => e.estado !== "baja");
+      const empleado = h("select", { class: "entrada", id: "c-emp" }, h("option", { value: "" }, "Elige un empleado"), activos.map((e) => h("option", { value: e.id, selected: e.id === preseleccion }, e.nombre)));
+      const tipo = h("select", { class: "entrada", id: "c-tipo" },
+        h("option", { value: "agregar" }, "Agregar un registro olvidado"),
+        h("option", { value: "modificar_hora" }, "Cambiar la hora de un registro"),
+        h("option", { value: "anular" }, "Anular un registro"));
+      const registro = h("select", { class: "entrada", id: "c-reg" });
+      const nuevoTipo = h("select", { class: "entrada", id: "c-nt" }, Object.entries(ETIQUETAS_TIPO).map(([v, t]) => h("option", { value: v }, t)));
+      const fecha = h("input", { class: "entrada", id: "c-fecha", type: "date" });
+      const hora = h("input", { class: "entrada", id: "c-hora", type: "time" });
+      const motivo = h("textarea", { class: "entrada", id: "c-motivo", maxlength: "300", placeholder: "Por ejemplo: se le acabó la batería y no pudo checar" });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const cRegistro = h("div", { class: "campo" }, h("label", { for: "c-reg" }, "Registro a corregir"), registro);
+      const cNuevoTipo = h("div", { class: "campo" }, h("label", { for: "c-nt" }, "Tipo de registro"), nuevoTipo);
+      const cFecha = h("div", { class: "campo" }, h("label", { for: "c-fecha" }, "Fecha"), fecha);
+      const cHora = h("div", { class: "campo" }, h("label", { for: "c-hora" }, "Hora correcta"), hora);
+      let registrosEmp = [];
+
+      const tzDe = () => tzPorSede()[nombres[empleado.value]?.sede_id] ?? "America/Mexico_City";
+      function ajustar() {
+        const t = tipo.value;
+        cRegistro.hidden = t === "agregar"; cNuevoTipo.hidden = t !== "agregar";
+        cFecha.hidden = cHora.hidden = t === "anular";
+      }
+      async function cargarRegistros() {
+        registro.replaceChildren(h("option", { value: "" }, empleado.value ? "Cargando…" : "Elige primero un empleado"));
+        registrosEmp = [];
+        if (!empleado.value) return;
+        try {
+          registrosEmp = await q(sb.from("registros").select("id,tipo,ocurrido_at").eq("empleado_id", empleado.value)
+            .gte("ocurrido_at", new Date(Date.now() - 7 * 86400_000).toISOString()).order("ocurrido_at", { ascending: false }).limit(30));
+          const tz = tzDe();
+          registro.replaceChildren(h("option", { value: "" }, registrosEmp.length ? "Elige un registro" : "No hay registros en los últimos 7 días"),
+            registrosEmp.map((r) => h("option", { value: r.id }, `${ETIQUETAS_TIPO[r.tipo]} · ${fechaCorta(new Date(r.ocurrido_at), tz)} ${horaLocal(new Date(r.ocurrido_at), tz)}`)));
+        } catch (err) { avisar(mensajeDeError(err), "error"); }
+      }
+      registro.addEventListener("change", () => {
+        const r = registrosEmp.find((x) => x.id === registro.value);
+        if (r && tipo.value === "modificar_hora") { const tz = tzDe(); fecha.value = fechaLocal(new Date(r.ocurrido_at), tz); hora.value = horaLocal(new Date(r.ocurrido_at), tz); }
+      });
+      empleado.addEventListener("change", () => { fecha.value = fecha.value || fechaLocal(new Date(), tzDe()); cargarRegistros(); });
+      tipo.addEventListener("change", ajustar);
+      ajustar();
+
+      const enviar = h("button", { class: "boton boton--primario", type: "submit" }, "Pedir corrección");
+      const form = h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const falla = (t) => { error.textContent = t; error.hidden = false; };
+          if (!empleado.value) return falla("Elige un empleado.");
+          if (motivo.value.trim().length < 5) return falla("Escribe el motivo (al menos unas palabras).");
+          const t = tipo.value;
+          if (t !== "agregar" && !registro.value) return falla("Elige el registro que quieres corregir.");
+          if (t !== "anular" && (!fecha.value || !hora.value)) return falla("Escribe la fecha y la hora correctas.");
+          const carga = {
+            empresa_id: estado.miembro.empresa_id, empleado_id: empleado.value, tipo: t, motivo: motivo.value.trim(),
+            origen: estado.miembro.rol === "supervisor" ? "supervisor" : "admin", estado: "pendiente", solicitada_por: estado.sesion.user.id,
+            registro_id: t === "agregar" ? null : registro.value,
+            nuevo_tipo: t === "agregar" ? nuevoTipo.value : null,
+            nueva_hora: t === "anular" ? null : aUTCdesdeLocal(fecha.value, hora.value, tzDe()).toISOString(),
+          };
+          enviar.setAttribute("aria-busy", "true"); enviar.disabled = true;
+          try {
+            await q(sb.from("correcciones").insert(carga));
+            avisar("Corrección enviada. Queda pendiente de aprobar.");
+            espacioForm.replaceChildren();
+            await actualizarPendientes();
+            if (pestana === "pendientes") await cargar();
+          } catch (err) { falla(mensajeDeError(err)); }
+          finally { enviar.removeAttribute("aria-busy"); enviar.disabled = false; }
+        } },
+        h("h2", {}, "Pedir una corrección"),
+        h("div", { class: "campo" }, h("label", { for: "c-emp" }, "Empleado"), empleado),
+        h("div", { class: "campo" }, h("label", { for: "c-tipo" }, "¿Qué hay que corregir?"), tipo),
+        cRegistro, cNuevoTipo,
+        h("div", { class: "cuadricula cuadricula--2" }, cFecha, cHora),
+        h("div", { class: "campo" }, h("label", { for: "c-motivo" }, "Motivo"), motivo, h("small", {}, "Queda guardado junto a la corrección.")),
+        error,
+        h("div", { class: "formulario__acciones" }, enviar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar")));
+      espacioForm.replaceChildren(form);
+      if (preseleccion) { fecha.value = fechaLocal(new Date(), tzDe()); cargarRegistros(); }
+      (preseleccion ? motivo : empleado).focus();
+    }
+
+    await cargar();
+    const pre = ctx.parametros?.get("empleado");
+    if (pre && puedeResolver()) mostrarFormulario(pre);
+  }
+
+  // ---------- Más ----------
+  function vistaMas(cont) {
+    cont.replaceChildren(
+      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Más"), h("p", {}, "Tu cuenta y tu empresa"))),
+      h("ul", { class: "lista" },
+        h("li", { class: "fila", style: "grid-template-columns:1fr auto" }, h("span", {}, h("div", { class: "fila__nombre" }, estado.empresa?.nombre ?? ""), h("div", { class: "fila__sub" }, "Empresa")), h("span", { class: "chip" }, ROLES[estado.miembro.rol] ?? estado.miembro.rol)),
+        h("li", { class: "fila", style: "grid-template-columns:1fr" }, h("span", {}, h("div", { class: "fila__nombre" }, estado.sesion.user.email), h("div", { class: "fila__sub" }, "Sesión iniciada"))),
+        estado.sedes.map((s) => h("li", { class: "fila", style: "grid-template-columns:1fr" }, h("span", {}, h("div", { class: "fila__nombre" }, s.nombre), h("div", { class: "fila__sub" }, `Sede · ${s.zona_horaria}`))))),
+      h("div", { class: "formulario__acciones", style: "margin-top:1rem" },
+        h("a", { class: "boton boton--secundario", href: "../privacidad.html", target: "_blank", rel: "noopener" }, "Aviso de privacidad"),
+        h("button", { class: "boton boton--secundario", type: "button", onclick: cerrarSesion }, icono("salir"), "Cerrar sesión")));
+  }
+
+  // ---------- Inicio ----------
+  async function iniciar() {
+    if (!sb) return pantallaSinConfigurar();
+    window.addEventListener("hashchange", rutear);
+    sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT" && estado.sesion) { estado.sesion = null; pantallaAcceso(); } });
+    await arrancarConSesion();
+  }
+  return iniciar();
+}
