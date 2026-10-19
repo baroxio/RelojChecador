@@ -1,3 +1,5 @@
+import { destinoWhatsapp } from "../../_shared/logic.ts";
+
 // Cliente mínimo de la WhatsApp Cloud API (Graph API de Meta).
 // SIN PROBAR contra Meta: verificar versión de la API y formatos con la documentación vigente.
 
@@ -11,6 +13,7 @@ function token(): string {
 }
 
 async function enviar(phoneNumberId: string, cuerpo: Record<string, unknown>): Promise<string | null> {
+  cuerpo = { ...cuerpo, to: destinoWhatsapp(String(cuerpo.to)) };
   const r = await fetch(`${BASE}/${phoneNumberId}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },

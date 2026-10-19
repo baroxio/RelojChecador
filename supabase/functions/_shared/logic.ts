@@ -174,6 +174,17 @@ export function selfieRequerida(
   return empleado ?? sede ?? empresa;
 }
 
+// --- Destino de los mensajes ----------------------------------------------
+
+/**
+ * WhatsApp entrega los móviles de México como 521 + 10 dígitos, pero la API de envío (y la lista
+ * de destinatarios de prueba) los espera como 52 + 10 dígitos. Se quita el "1" intermedio.
+ */
+export function destinoWhatsapp(waId: string): string {
+  const digitos = waId.replace(/\D/g, "");
+  return /^521\d{10}$/.test(digitos) ? "52" + digitos.slice(3) : digitos;
+}
+
 // --- Invitaciones ------------------------------------------------------------
 
 // Alfabeto sin 0, 1, I, O para evitar confusiones al teclear.

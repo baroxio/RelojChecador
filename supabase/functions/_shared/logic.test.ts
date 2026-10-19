@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
   calcularSenales,
+  destinoWhatsapp,
   extraerCodigoInvitacion,
   extraerMensajes,
   firmaValida,
@@ -157,4 +158,12 @@ test("señales de riesgo", () => {
     ["hora_desfasada"],
   );
   assert.deepEqual(calcularSenales({ ...base, tsWhatsapp: null }), []);
+});
+
+test("destino de WhatsApp: se quita el 1 de los móviles mexicanos", () => {
+  assert.equal(destinoWhatsapp("5213312840590"), "523312840590");
+  assert.equal(destinoWhatsapp("523312840590"), "523312840590");
+  assert.equal(destinoWhatsapp("+52 1 33 1284 0590"), "523312840590");
+  assert.equal(destinoWhatsapp("15556428542"), "15556428542");
+  assert.equal(destinoWhatsapp("5491112345678"), "5491112345678");
 });
