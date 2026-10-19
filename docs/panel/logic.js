@@ -253,3 +253,25 @@ export function enlaceMensajeEmpleado(telefonoE164, nombre, enlaceInvitacion) {
 export function enlaceMapa(lat, lng) {
   return `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
 }
+
+// --- Roles (el servidor aplica las mismas reglas; aquí solo sirven para mostrar u ocultar opciones) ---
+
+export const ETIQUETAS_ROL = { dueno: "Dueño", admin: "Administrador", supervisor: "Supervisor", consulta: "Consulta" };
+export const DESCRIPCION_ROL = {
+  dueno: "Todo en su empresa, incluido nombrar administradores.",
+  admin: "Da de alta y baja empleados y usuarios (supervisores y consulta), geocercas y horarios.",
+  supervisor: "Ve y corrige a los empleados de sus sedes.",
+  consulta: "Solo ve la información.",
+};
+
+export function rolesAsignables(actor) {
+  if (actor === "dueno") return ["dueno", "admin", "supervisor", "consulta"];
+  if (actor === "admin") return ["supervisor", "consulta"];
+  return [];
+}
+
+export function puedeGestionarRol(actor, objetivo) {
+  if (actor === "dueno") return true;
+  if (actor === "admin") return objetivo === "supervisor" || objetivo === "consulta";
+  return false;
+}

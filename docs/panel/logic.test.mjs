@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   aUTCdesdeLocal, contarGrupos, diaSemana, enlaceMensajeEmpleado, fechaLocal, formatearDistancia,
   formatearDuracion, formatearTelefono, horaLocal, horarioDelDia, iniciales, minutosDeRetardo,
-  normalizarTelefonoMx, parsearVigencia, resumenDelDia, etiquetaSenal,
+  normalizarTelefonoMx, parsearVigencia, resumenDelDia, etiquetaSenal, rolesAsignables, puedeGestionarRol,
 } from "./logic.js";
 
 const MX = "America/Mexico_City";
@@ -129,4 +129,12 @@ test("mensaje de invitación por WhatsApp al empleado", () => {
   const texto = decodeURIComponent(url.split("?text=")[1]);
   assert.ok(texto.startsWith("Hola Ana,"));
   assert.ok(texto.includes("https://wa.me/15556428542?text=ALTA%20ABC"));
+});
+
+test("roles: qué ve cada quien", () => {
+  assert.deepEqual(rolesAsignables("admin"), ["supervisor", "consulta"]);
+  assert.deepEqual(rolesAsignables("supervisor"), []);
+  assert.equal(puedeGestionarRol("dueno", "dueno"), true);
+  assert.equal(puedeGestionarRol("admin", "admin"), false);
+  assert.equal(puedeGestionarRol("admin", "consulta"), true);
 });

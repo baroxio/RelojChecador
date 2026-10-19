@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 24
       - name: Pruebas de la lógica compartida
-        run: node --test supabase/functions/_shared/logic.test.ts supabase/functions/_shared/invitacion.test.ts
+        run: node --test supabase/functions/_shared/logic.test.ts supabase/functions/_shared/invitacion.test.ts supabase/functions/_shared/permisos.test.ts
 
   desplegar:
     needs: probar
@@ -56,3 +56,6 @@ jobs:
       # El panel llama a esta función con la sesión del usuario: la verificación de JWT queda activa.
       - name: Desplegar crear-invitacion
         run: supabase functions deploy crear-invitacion --project-ref "$SUPABASE_PROJECT_REF"
+      # Crea usuarios y empresas con la clave del servidor; valida el JWT y los permisos dentro de la función.
+      - name: Desplegar administrar
+        run: supabase functions deploy administrar --project-ref "$SUPABASE_PROJECT_REF"

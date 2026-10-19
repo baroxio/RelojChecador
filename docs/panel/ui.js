@@ -4,6 +4,7 @@ import {
   ETIQUETAS_TIPO, ORDEN_GRUPOS, TIPO_CORTO, TITULO_GRUPO, aUTCdesdeLocal, contarGrupos, enlaceMapa,
   enlaceMensajeEmpleado, etiquetaSenal, fechaLocal, formatearDistancia, formatearDuracion,
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
+  DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
 } from "./logic.js";
 
 const SVG = (d, relleno = false) =>
@@ -21,6 +22,7 @@ const ICONOS = {
   mapa: SVG('<path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>'),
   flecha: SVG('<path d="M6 9l6 6 6-6"/>'),
   refrescar: SVG('<path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/>'),
+  administrar: SVG('<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>'),
   usuario: SVG('<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>'),
   salir: SVG('<path d="M10 4H5v16h5"/><path d="M15 8l4 4-4 4M19 12H9"/>'),
 };
@@ -52,7 +54,7 @@ const ROLES = { dueno: "Dueño", admin: "Administrador", supervisor: "Supervisor
 const ETIQUETA_ESTADO = { invitado: "Invitado", activo: "Activo", baja: "Baja" };
 
 export function iniciarApp({ sb, url, key, raiz, avisos }) {
-  const estado = { sesion: null, miembro: null, empresa: null, sedes: [], sedeFiltro: "todas", ruta: 0, pendientes: 0 };
+  const estado = { sesion: null, miembro: null, empresa: null, membresias: [], plataforma: false, sedes: [], sedeFiltro: "todas", ruta: 0, pendientes: 0 };
   let temporizador = null;
 
   // ---------- Utilidades ----------
@@ -64,6 +66,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   const tzPorSede = () => Object.fromEntries(estado.sedes.map((s) => [s.id, s.zona_horaria]));
   const nombreSede = (id) => estado.sedes.find((s) => s.id === id)?.nombre ?? "";
   const puedeAdministrar = () => ["dueno", "admin"].includes(estado.miembro?.rol);
+  const eid = () => estado.miembro.empresa_id;
   const puedeResolver = () => ["dueno", "admin", "supervisor"].includes(estado.miembro?.rol);
 
   function nombreUsuario() {
@@ -161,6 +164,38 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       h("button", { class: "boton boton--secundario", type: "button", onclick: cerrarSesion }, "Cerrar sesión"))));
   }
 
+  function formularioClave({ alListo, boton = "Guardar contraseña" }) {
+    const nueva = h("input", { class: "entrada", id: "cl-nueva", type: "password", autocomplete: "new-password", required: true });
+    const repetir = h("input", { class: "entrada", id: "cl-rep", type: "password", autocomplete: "new-password", required: true });
+    const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+    const guardar = h("button", { class: "boton boton--primario", type: "submit" }, boton);
+    return h("form", { class: "formulario", novalidate: true,
+      onsubmit: async (ev) => {
+        ev.preventDefault(); error.hidden = true;
+        const falla = (t) => { error.textContent = t; error.hidden = false; };
+        if (nueva.value.length < 8) return falla("Usa al menos 8 caracteres.");
+        if (nueva.value !== repetir.value) return falla("Las contraseñas no coinciden.");
+        guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+        try {
+          const { error: err } = await sb.auth.updateUser({ password: nueva.value, data: { debe_cambiar_clave: false } });
+          if (err) return falla(/different/i.test(err.message) ? "Elige una contraseña distinta a la actual." : /weak|short|least/i.test(err.message) ? "Esa contraseña es muy débil. Prueba con otra más larga." : mensajeDeError(err));
+          nueva.value = repetir.value = "";
+          await alListo();
+        } finally { guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+      } },
+      h("div", { class: "campo" }, h("label", { for: "cl-nueva" }, "Contraseña nueva"), nueva, h("small", {}, "Al menos 8 caracteres.")),
+      h("div", { class: "campo" }, h("label", { for: "cl-rep" }, "Repite la contraseña"), repetir),
+      error, guardar);
+  }
+
+  function pantallaCambiarClave() {
+    raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" },
+      h("div", { class: "marca" }, icono("hoy"), "RelojChecador"),
+      h("div", {}, h("h1", {}, "Elige tu contraseña"), h("p", {}, "Entraste con una contraseña temporal. Crea una propia para continuar.")),
+      formularioClave({ alListo: async () => { await sb.auth.refreshSession?.(); await arrancarConSesion(); } }),
+      h("button", { class: "boton boton--secundario", type: "button", onclick: cerrarSesion }, "Cerrar sesión"))));
+  }
+
   async function cerrarSesion() {
     clearInterval(temporizador);
     borrarCaches();
@@ -176,29 +211,38 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     if (!estado.sesion) return pantallaAcceso();
     raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" }, h("p", {}, "Cargando tu empresa…"))));
     try {
-      const miembros = await q(sb.from("miembros").select("id,empresa_id,rol").eq("user_id", estado.sesion.user.id).eq("activo", true));
-      if (!miembros.length) return pantallaSinAcceso(estado.sesion.user.email);
-      estado.miembro = miembros[0];
-      const [empresas, sedes] = await Promise.all([
-        q(sb.from("empresas").select("id,nombre").eq("id", estado.miembro.empresa_id)),
-        q(sb.from("sedes").select("id,nombre,zona_horaria,activa").order("nombre")),
+      const uid = estado.sesion.user.id;
+      const [miembros, plat] = await Promise.all([
+        q(sb.from("miembros").select("id,empresa_id,rol").eq("user_id", uid).eq("activo", true)),
+        q(sb.from("plataforma_admins").select("user_id").eq("user_id", uid)),
       ]);
-      estado.empresa = empresas[0] ?? { nombre: "Tu empresa" };
-      estado.sedes = sedes.filter((s) => s.activa);
+      estado.plataforma = plat.length > 0;
+      if (!miembros.length && !estado.plataforma) return pantallaSinAcceso(estado.sesion.user.email);
+      const empresas = miembros.length ? await q(sb.from("empresas").select("id,nombre").in("id", miembros.map((m) => m.empresa_id))) : [];
+      estado.membresias = miembros.map((m) => ({ ...m, empresa: empresas.find((e) => e.id === m.empresa_id)?.nombre ?? "Empresa" }));
+      let guardada = null;
+      try { guardada = localStorage.getItem("rc:empresa"); } catch { /* sin almacenamiento */ }
+      estado.miembro = estado.membresias.find((m) => m.empresa_id === guardada) ?? estado.membresias[0] ?? null;
+      estado.empresa = estado.miembro ? { id: estado.miembro.empresa_id, nombre: estado.miembro.empresa } : null;
+      estado.sedes = estado.miembro
+        ? (await q(sb.from("sedes").select("id,nombre,zona_horaria,activa").eq("empresa_id", estado.miembro.empresa_id).order("nombre"))).filter((x) => x.activa)
+        : [];
+      estado.sedeFiltro = "todas";
     } catch (err) {
       raiz.replaceChildren(h("div", { class: "acceso" }, h("div", { class: "acceso__caja" }, bloqueError(err, arrancarConSesion))));
       return;
     }
+    if (estado.sesion.user.user_metadata?.debe_cambiar_clave) return pantallaCambiarClave();
     construirEstructura();
     await actualizarPendientes();
     rutear();
   }
 
   function construirEstructura() {
-    const enlaces = [
-      ["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"],
-      ["correcciones", "Correcciones", "#/correcciones"], ["usuario", "Cuenta", "#/cuenta"],
-    ];
+    const enlaces = [];
+    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["correcciones", "Correcciones", "#/correcciones"]);
+    if (puedeAdministrar() || estado.plataforma) enlaces.push(["administrar", "Administrar", "#/administrar"]);
+    enlaces.push(["usuario", "Cuenta", "#/cuenta"]);
     const nav = h("nav", { class: "nav", "aria-label": "Principal" }, enlaces.map(([id, texto, href]) =>
       h("a", { href, "data-ruta": id === "usuario" ? "cuenta" : id }, icono(id), h("span", {}, texto),
         id === "correcciones" && h("span", { class: "nav__aviso", id: "aviso-correcciones", hidden: true }))));
@@ -210,7 +254,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("span", { class: "avatar avatar--barra", "aria-hidden": "true" }, iniciales(nombre)),
           h("div", { class: "barra__textos" },
             h("div", { class: "barra__nombre" }, nombre),
-            h("div", { class: "barra__empresa" }, `${estado.empresa?.nombre ?? ""} · ${ROLES[estado.miembro?.rol] ?? ""}`)))),
+            h("div", { class: "barra__empresa" }, estado.miembro ? `${estado.empresa?.nombre ?? ""} · ${ROLES[estado.miembro.rol] ?? ""}` : "Administrador de la plataforma")))),
       nav,
       h("div", { class: "franja", id: "franja", role: "status", hidden: true }),
       h("main", { class: "contenido", id: "contenido", tabindex: "-1" })));
@@ -236,9 +280,9 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   window.addEventListener("rc:estado", pintarFranja);
 
   async function actualizarPendientes() {
-    if (!puedeResolver()) return;
+    if (!estado.miembro || !puedeResolver()) return;
     try {
-      const { count } = await sb.from("correcciones").select("id", { count: "exact", head: true }).eq("estado", "pendiente");
+      const { count } = await sb.from("correcciones").select("id", { count: "exact", head: true }).eq("empresa_id", eid()).eq("estado", "pendiente");
       estado.pendientes = count ?? 0;
     } catch { estado.pendientes = 0; }
     const el = document.getElementById("aviso-correcciones");
@@ -246,13 +290,15 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Rutas ----------
-  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, cuenta: vistaCuenta, mas: vistaCuenta };
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
 
   function rutear() {
     clearInterval(temporizador);
     if (!estado.sesion || !estado.miembro) return;
     const [camino, consulta] = (location.hash || "#/hoy").replace(/^#\//, "").split("?");
-    const nombre = RUTAS[camino] ? (camino === "mas" ? "cuenta" : camino) : "hoy";
+    let nombre = RUTAS[camino] ? (camino === "mas" ? "cuenta" : camino) : "hoy";
+    if (!estado.miembro && !["administrar", "cuenta"].includes(nombre)) nombre = "administrar";
+    if (nombre === "administrar" && !(puedeAdministrar() || estado.plataforma)) nombre = estado.miembro ? "hoy" : "cuenta";
     const parametros = new URLSearchParams(consulta ?? "");
     estado.ruta += 1;
     const miRuta = estado.ruta;
@@ -260,6 +306,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       if (a.dataset.ruta === nombre) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     const cont = document.getElementById("contenido");
+    if (!cont) return; // la pantalla actual no tiene contenido (por ejemplo, el cambio de contraseña)
     document.title = `${nombre[0].toUpperCase()}${nombre.slice(1)} | RelojChecador`;
     RUTAS[nombre](cont, { vigente: () => estado.ruta === miRuta, parametros });
     window.scrollTo?.(0, 0);
@@ -300,11 +347,11 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       try {
         const desde = new Date(Date.now() - 36 * 3600_000).toISOString();
         const [empleados, registros, horarios, horarioDias, empleadoHorarios] = await Promise.all([
-          q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id").eq("estado", "activo")),
-          q(sb.from("registros_efectivos").select("origen,fuente_id,empleado_id,sede_id,tipo,hora_efectiva,hora_original,canal,senales,medio_id,corregido").gte("hora_efectiva", desde)),
-          q(sb.from("horarios").select("id,tolerancia_retardo_min")),
+          q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id").eq("empresa_id", eid()).eq("estado", "activo")),
+          q(sb.from("registros_efectivos").select("origen,fuente_id,empleado_id,sede_id,tipo,hora_efectiva,hora_original,canal,senales,medio_id,corregido").eq("empresa_id", eid()).gte("hora_efectiva", desde)),
+          q(sb.from("horarios").select("id,tolerancia_retardo_min").eq("empresa_id", eid())),
           q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada")),
-          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia")),
+          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia").eq("empresa_id", eid())),
         ]);
         if (!ctx.vigente()) return;
         const datos = { empleados, registros, horarios, horarioDias, empleadoHorarios };
@@ -466,7 +513,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     async function cargar() {
       lista.replaceChildren(esqueletos(4));
       try {
-        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado").order("nombre"));
+        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado").eq("empresa_id", eid()).order("nombre"));
         if (ctx.vigente()) pintar();
       } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
     }
@@ -610,9 +657,9 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     return j;
   }
 
-  async function copiar(texto) {
-    try { await navigator.clipboard.writeText(texto); avisar("Enlace copiado."); }
-    catch { avisar("No se pudo copiar. Mantén presionado el enlace para copiarlo.", "error"); }
+  async function copiar(texto, que = "Enlace") {
+    try { await navigator.clipboard.writeText(texto); avisar(`${que} copiado.`); }
+    catch { avisar("No se pudo copiar. Mantén presionado el texto para copiarlo.", "error"); }
   }
 
   // ---------- Correcciones ----------
@@ -637,9 +684,9 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     async function cargar() {
       lista.replaceChildren(esqueletos(3));
       try {
-        empleados = await q(sb.from("empleados").select("id,nombre,sede_id,estado").order("nombre"));
+        empleados = await q(sb.from("empleados").select("id,nombre,sede_id,estado").eq("empresa_id", eid()).order("nombre"));
         nombres = Object.fromEntries(empleados.map((e) => [e.id, e]));
-        const consulta = sb.from("correcciones").select("id,empleado_id,registro_id,tipo,nuevo_tipo,nueva_hora,motivo,origen,estado,creada_at,resuelto_at,comentario_resolucion");
+        const consulta = sb.from("correcciones").select("id,empleado_id,registro_id,tipo,nuevo_tipo,nueva_hora,motivo,origen,estado,creada_at,resuelto_at,comentario_resolucion").eq("empresa_id", eid());
         const filas = pestana === "pendientes"
           ? await q(consulta.eq("estado", "pendiente").order("creada_at", { ascending: false }))
           : await q(consulta.neq("estado", "pendiente").order("creada_at", { ascending: false }).limit(30));
@@ -791,10 +838,292 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     if (pre && puedeResolver()) mostrarFormulario(pre);
   }
 
+  // ---------- Administrar ----------
+  async function llamarAdministrar(cuerpo) {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch(`${url}/functions/v1/administrar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}`, apikey: key },
+      body: JSON.stringify(cuerpo),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "No se pudo completar la operación.");
+    return j;
+  }
+
+  async function cambiarEmpresa(id) {
+    try { localStorage.setItem("rc:empresa", id); } catch { /* sin almacenamiento */ }
+    location.hash = "#/hoy";
+    await arrancarConSesion();
+  }
+
+  function selectorEmpresa() {
+    if (estado.membresias.length < 2) return null;
+    return h("div", { class: "campo", style: "max-width:22rem" },
+      h("label", { for: "sel-empresa" }, "Empresa activa"),
+      h("select", { class: "entrada", id: "sel-empresa", onchange: (e) => cambiarEmpresa(e.target.value) },
+        estado.membresias.map((m) => h("option", { value: m.empresa_id, selected: m.empresa_id === estado.miembro?.empresa_id }, `${m.empresa} (${ROLES[m.rol]})`))));
+  }
+
+  function bloqueCredencial({ correo, clave, yaExistia, titulo }) {
+    if (yaExistia) {
+      return h("div", { class: "invitacion", style: "margin-top:.75rem" },
+        h("p", {}, `${correo} ya tenía una cuenta: quedó agregado y entra con su contraseña de siempre.`));
+    }
+    return h("div", { class: "invitacion", style: "margin-top:.75rem" },
+      h("p", {}, h("strong", {}, titulo ?? "Cuenta lista")),
+      h("p", {}, "Correo: ", h("strong", {}, correo)),
+      h("p", {}, "Contraseña temporal: ", h("code", {}, clave)),
+      h("p", { class: "nota" }, "Se muestra una sola vez. Pásasela a la persona; al entrar, la app le pide crear la suya."),
+      h("div", { class: "invitacion__acciones" },
+        h("button", { class: "boton boton--secundario", type: "button", onclick: () => copiar(clave, "Contraseña") }, icono("copiar"), "Copiar contraseña")));
+  }
+
+  function opcionesSedes(marcadas = []) {
+    if (!estado.sedes.length) return { nodo: h("p", { class: "nota" }, "Esta empresa aún no tiene sedes."), marcadas: () => [] };
+    const cajas = estado.sedes.map((x) => h("input", { type: "checkbox", value: x.id, checked: marcadas.includes(x.id) }));
+    return {
+      nodo: h("fieldset", { class: "opciones" }, h("legend", { class: "campo__etiqueta" }, "Sedes que ve"),
+        estado.sedes.map((x, n) => h("label", { class: "opcion" }, cajas[n], x.nombre))),
+      marcadas: () => cajas.filter((c) => c.checked).map((c) => c.value),
+    };
+  }
+
+  async function vistaAdministrar(cont, ctx) {
+    const verUsuarios = puedeAdministrar();
+    const verEmpresas = estado.plataforma;
+    let pestana = verUsuarios ? "usuarios" : "empresas";
+    const zona = h("div", {});
+    const boton = (id, texto) => h("button", { class: "boton boton--secundario boton--chico", type: "button", "aria-pressed": String(pestana === id),
+      onclick: () => { pestana = id; for (const b of document.querySelectorAll("[data-pestana]")) b.setAttribute("aria-pressed", String(b.dataset.pestana === id)); mostrar(); } }, texto);
+    const pestanas = verUsuarios && verEmpresas
+      ? h("div", { class: "resumen" }, ...[["usuarios", "Usuarios"], ["empresas", "Empresas"]].map(([id, t]) => { const b = boton(id, t); b.dataset.pestana = id; return b; }))
+      : null;
+    cont.replaceChildren(
+      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Administrar"),
+        h("p", {}, verUsuarios ? `Usuarios y roles de ${estado.empresa?.nombre ?? "tu empresa"}${verEmpresas ? " · empresas de la plataforma" : ""}` : "Empresas de la plataforma"))),
+      selectorEmpresa(), pestanas, zona);
+    function mostrar() { if (pestana === "usuarios") pintarUsuarios(zona, ctx); else pintarEmpresas(zona, ctx); }
+    mostrar();
+  }
+
+  async function pintarUsuarios(zona, ctx) {
+    const actor = estado.miembro.rol;
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    zona.replaceChildren(
+      h("div", { class: "formulario__acciones", style: "margin-bottom:.75rem" },
+        h("button", { class: "boton boton--primario", type: "button", onclick: () => formulario() }, icono("agregar"), "Agregar usuario")),
+      espacioForm, lista);
+    let usuarios = [];
+
+    async function cargar() {
+      lista.replaceChildren(esqueletos(3));
+      try {
+        usuarios = await q(sb.rpc("miembros_de_empresa", { p_empresa: eid() }));
+        if (ctx.vigente()) pintar();
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function pintar() {
+      lista.replaceChildren(h("ul", { class: "lista" }, usuarios.map(filaUsuario)));
+    }
+
+    function filaUsuario(u) {
+      const detalle = h("div", { class: "detalle", hidden: true });
+      const id = `us-${u.miembro_id}`;
+      detalle.id = id;
+      const fila = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": id,
+        onclick: () => {
+          const abierto = fila.getAttribute("aria-expanded") === "true";
+          fila.setAttribute("aria-expanded", String(!abierto)); detalle.hidden = abierto;
+          if (!abierto) pintarAcciones(u, detalle);
+        } },
+        h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(u.nombre || u.correo)),
+        h("span", { style: "min-width:0" },
+          h("div", { class: "fila__nombre" }, u.nombre || u.correo),
+          u.nombre && h("div", { class: "fila__sub" }, u.correo)),
+        h("span", { class: "fila__fin" },
+          h("span", { class: "chip" }, ROLES[u.rol] ?? u.rol),
+          !u.activo && h("span", { class: "chip chip--baja" }, "Baja")),
+        h("span", { class: "fila__flecha" }, icono("flecha")));
+      return h("li", {}, fila, detalle);
+    }
+
+    function pintarAcciones(u, cuerpo) {
+      const soyYo = u.user_id === estado.sesion.user.id;
+      if (soyYo) { cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Eres tú. Tu contraseña se cambia en Cuenta.")); return; }
+      if (!puedeGestionarRol(actor, u.rol)) { cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Solo el dueño puede cambiar a esta persona.")); return; }
+      const rol = h("select", { class: "entrada", id: `rol-${u.miembro_id}` }, rolesAsignables(actor).map((r) => h("option", { value: r, selected: r === u.rol }, ROLES[r])));
+      const nota = h("p", { class: "nota" }, DESCRIPCION_ROL[u.rol] ?? "");
+      const sedes = opcionesSedes(u.sedes ?? []);
+      const cajaSedes = h("div", { hidden: rol.value !== "supervisor" }, sedes.nodo);
+      rol.addEventListener("change", () => { nota.textContent = DESCRIPCION_ROL[rol.value] ?? ""; cajaSedes.hidden = rol.value !== "supervisor"; });
+      const zonaResultado = h("div", {});
+      const guardar = h("button", { class: "boton boton--primario boton--chico", type: "button",
+        onclick: async () => {
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            await llamarAdministrar({ accion: "cambiar_rol", miembro_id: u.miembro_id, rol: rol.value, sede_ids: rol.value === "supervisor" ? sedes.marcadas() : [] });
+            avisar("Cambios guardados."); await cargar();
+          } catch (err) { avisar(mensajeDeError(err), "error"); guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } }, "Guardar cambios");
+      const reiniciar = h("button", { class: "boton boton--secundario boton--chico", type: "button",
+        onclick: async () => {
+          reiniciar.setAttribute("aria-busy", "true"); reiniciar.disabled = true;
+          try {
+            const r = await llamarAdministrar({ accion: "reiniciar_clave", miembro_id: u.miembro_id });
+            zonaResultado.replaceChildren(bloqueCredencial({ correo: u.correo, clave: r.clave_temporal, titulo: "Contraseña reiniciada" }));
+          } catch (err) { avisar(mensajeDeError(err), "error"); }
+          finally { reiniciar.removeAttribute("aria-busy"); reiniciar.disabled = false; }
+        } }, "Reiniciar contraseña");
+      let confirmando = false;
+      const baja = h("button", { class: `boton boton--chico ${u.activo ? "boton--peligro" : "boton--secundario"}`, type: "button",
+        onclick: async () => {
+          if (u.activo && !confirmando) { confirmando = true; baja.textContent = "Confirmar baja"; setTimeout(() => { confirmando = false; baja.textContent = "Dar de baja"; }, 5000); return; }
+          baja.disabled = true;
+          try { await llamarAdministrar({ accion: "cambiar_activo", miembro_id: u.miembro_id, activo: !u.activo }); avisar(u.activo ? "Usuario dado de baja." : "Usuario reactivado."); await cargar(); }
+          catch (err) { avisar(mensajeDeError(err), "error"); baja.disabled = false; }
+        } }, u.activo ? "Dar de baja" : "Reactivar");
+      cuerpo.replaceChildren(h("div", { style: "display:grid; gap:.75rem; padding-top:.75rem" },
+        h("div", { class: "campo", style: "max-width:22rem" }, h("label", { for: `rol-${u.miembro_id}` }, "Rol"), rol, nota),
+        cajaSedes,
+        h("div", { class: "formulario__acciones" }, guardar, reiniciar, baja), zonaResultado));
+    }
+
+    function formulario() {
+      if (espacioForm.firstChild) { espacioForm.replaceChildren(); return; }
+      const correo = h("input", { class: "entrada", id: "u-correo", type: "email", inputmode: "email", autocomplete: "off", required: true });
+      const nombre = h("input", { class: "entrada", id: "u-nombre", autocomplete: "off", required: true });
+      const asignables = rolesAsignables(actor);
+      const rol = h("select", { class: "entrada", id: "u-rol" }, asignables.map((r) => h("option", { value: r }, ROLES[r])));
+      const nota = h("p", { class: "nota" }, DESCRIPCION_ROL[asignables[0]] ?? "");
+      const sedes = opcionesSedes([]);
+      const cajaSedes = h("div", { hidden: true }, sedes.nodo);
+      rol.addEventListener("change", () => { nota.textContent = DESCRIPCION_ROL[rol.value] ?? ""; cajaSedes.hidden = rol.value !== "supervisor"; });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const resultado = h("div", {});
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Crear usuario");
+      espacioForm.replaceChildren(h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const falla = (t) => { error.textContent = t; error.hidden = false; };
+          if (nombre.value.trim().length < 2) return falla("Escribe el nombre de la persona.");
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo.value.trim())) return falla("Escribe un correo válido.");
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            const r = await llamarAdministrar({ accion: "crear_usuario", empresa_id: eid(), correo: correo.value.trim(), nombre: nombre.value.trim(), rol: rol.value, sede_ids: rol.value === "supervisor" ? sedes.marcadas() : [] });
+            resultado.replaceChildren(bloqueCredencial({ correo: r.correo, clave: r.clave_temporal, yaExistia: r.ya_existia, titulo: "Usuario creado" }));
+            correo.value = nombre.value = ""; guardar.hidden = true;
+            await cargar();
+          } catch (err) { falla(mensajeDeError(err)); }
+          finally { guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } },
+        h("h2", {}, "Nuevo usuario"),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "u-nombre" }, "Nombre"), nombre),
+          h("div", { class: "campo" }, h("label", { for: "u-correo" }, "Correo"), correo)),
+        h("div", { class: "campo", style: "max-width:22rem" }, h("label", { for: "u-rol" }, "Rol"), rol, nota),
+        cajaSedes, error, resultado,
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cerrar"))));
+      nombre.focus();
+    }
+    await cargar();
+  }
+
+  async function pintarEmpresas(zona, ctx) {
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    zona.replaceChildren(
+      h("div", { class: "formulario__acciones", style: "margin-bottom:.75rem" },
+        h("button", { class: "boton boton--primario", type: "button", onclick: () => formulario() }, icono("agregar"), "Nueva empresa")),
+      espacioForm, lista);
+
+    async function cargar() {
+      lista.replaceChildren(esqueletos(3));
+      try {
+        const { empresas } = await llamarAdministrar({ accion: "listar_empresas" });
+        if (ctx.vigente()) lista.replaceChildren(h("ul", { class: "lista" }, empresas.map(filaEmpresa)));
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function filaEmpresa(e) {
+      const detalle = h("div", { class: "detalle", hidden: true });
+      const id = `emp-${e.id}`; detalle.id = id;
+      const actual = estado.miembro?.empresa_id === e.id;
+      const fila = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": id,
+        onclick: () => { const ab = fila.getAttribute("aria-expanded") === "true"; fila.setAttribute("aria-expanded", String(!ab)); detalle.hidden = ab; if (!ab) pintarDetalle(e, detalle, actual); } },
+        h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(e.nombre)),
+        h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, e.nombre),
+          h("div", { class: "fila__sub" }, `${e.usuarios} ${e.usuarios === 1 ? "usuario" : "usuarios"} · ${e.empleados} ${e.empleados === 1 ? "empleado" : "empleados"}`)),
+        h("span", { class: "fila__fin" }, actual && h("span", { class: "chip chip--ok" }, "Activa")),
+        h("span", { class: "fila__flecha" }, icono("flecha")));
+      return h("li", {}, fila, detalle);
+    }
+
+    function pintarDetalle(e, cuerpo, actual) {
+      const nombre = h("input", { class: "entrada", value: e.nombre, "aria-label": "Nombre de la empresa" });
+      const entrar = h("button", { class: "boton boton--primario boton--chico", type: "button",
+        onclick: async () => {
+          entrar.setAttribute("aria-busy", "true"); entrar.disabled = true;
+          try { await llamarAdministrar({ accion: "unirme_a_empresa", empresa_id: e.id }); avisar("Quedaste como administrador de esa empresa."); await cambiarEmpresa(e.id); }
+          catch (err) { avisar(mensajeDeError(err), "error"); entrar.removeAttribute("aria-busy"); entrar.disabled = false; }
+        } }, actual ? "Ya estás en esta empresa" : "Entrar a esta empresa");
+      if (actual) entrar.disabled = true;
+      const renombrar = h("button", { class: "boton boton--secundario boton--chico", type: "button",
+        onclick: async () => {
+          try { await llamarAdministrar({ accion: "renombrar_empresa", empresa_id: e.id, nombre: nombre.value }); avisar("Nombre actualizado."); await cargar(); }
+          catch (err) { avisar(mensajeDeError(err), "error"); }
+        } }, "Guardar nombre");
+      cuerpo.replaceChildren(h("div", { style: "display:grid; gap:.75rem; padding-top:.75rem" },
+        h("p", { class: "nota" }, "Al entrar quedas como administrador de esa empresa y queda constancia en la bitácora."),
+        h("div", { class: "formulario__acciones" }, entrar),
+        h("div", { class: "campo", style: "max-width:22rem" }, h("label", {}, "Nombre"), nombre), renombrar));
+    }
+
+    function formulario() {
+      if (espacioForm.firstChild) { espacioForm.replaceChildren(); return; }
+      const nombre = h("input", { class: "entrada", id: "e-nombre", autocomplete: "off", required: true });
+      const dueno = h("input", { class: "entrada", id: "e-dueno", autocomplete: "off", required: true });
+      const correo = h("input", { class: "entrada", id: "e-correo", type: "email", inputmode: "email", autocomplete: "off", required: true });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const resultado = h("div", {});
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Crear empresa");
+      espacioForm.replaceChildren(h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const falla = (t) => { error.textContent = t; error.hidden = false; };
+          if (nombre.value.trim().length < 2) return falla("Escribe el nombre de la empresa.");
+          if (dueno.value.trim().length < 2) return falla("Escribe el nombre del dueño.");
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo.value.trim())) return falla("Escribe un correo válido para el dueño.");
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            const r = await llamarAdministrar({ accion: "crear_empresa", nombre: nombre.value.trim(), nombre_dueno: dueno.value.trim(), correo_dueno: correo.value.trim() });
+            resultado.replaceChildren(bloqueCredencial({ correo: r.correo, clave: r.clave_temporal, yaExistia: r.ya_existia, titulo: "Empresa creada" }));
+            nombre.value = dueno.value = correo.value = ""; guardar.hidden = true;
+            await cargar();
+          } catch (err) { falla(mensajeDeError(err)); }
+          finally { guardar.removeAttribute("aria-busy"); guardar.disabled = false; }
+        } },
+        h("h2", {}, "Nueva empresa"),
+        h("div", { class: "campo" }, h("label", { for: "e-nombre" }, "Nombre de la empresa"), nombre),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "e-dueno" }, "Nombre del dueño"), dueno),
+          h("div", { class: "campo" }, h("label", { for: "e-correo" }, "Correo del dueño"), correo)),
+        error, resultado,
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cerrar"))));
+      nombre.focus();
+    }
+    await cargar();
+  }
+
   // ---------- Cuenta y ayuda ----------
   const DESARROLLADOR = { nombre: "Jose Rigoberto Barocio Sida", correo: "jose.rigoberto@gmail.com", sitio: "Guadalajara, Jalisco, México" };
 
   function vistaCuenta(cont, ctx) {
+    const formClave = formularioClave({ alListo: async () => { avisar("Contraseña actualizada."); } });
     const pintar = () => {
       if (!ctx.vigente()) { window.removeEventListener("rc:estado", pintar); return; }
       const RC = window.RC ?? {};
@@ -815,9 +1144,12 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(nombre)),
             h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, nombre), h("div", { class: "fila__sub" }, estado.sesion.user.email))),
           h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, icono("equipo")),
-            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, estado.empresa?.nombre ?? ""),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, estado.empresa?.nombre ?? "Sin empresa"),
               h("div", { class: "fila__sub" }, estado.sedes.length ? `${estado.sedes.length} ${estado.sedes.length === 1 ? "sede" : "sedes"}: ${estado.sedes.map((x) => x.nombre).join(", ")}` : "Sin sedes todavía")),
             h("span", { class: "fila__fin" }, h("span", { class: "chip" }, ROLES[estado.miembro.rol] ?? estado.miembro.rol)))),
+        selectorEmpresa() && h("div", { style: "margin-top:.75rem" }, selectorEmpresa()),
+        h("h2", { class: "seccion" }, "Contraseña"),
+        formClave,
         h("h2", { class: "seccion" }, "Ayuda y aplicación"),
         h("ul", { class: "lista" },
           h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, icono("refrescar")),

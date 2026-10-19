@@ -44,6 +44,18 @@ const datos = {
   ],
 };
 
+// Las consultas del panel filtran por la empresa activa.
+for (const t of ["sedes", "empleados", "registros_efectivos", "horarios", "empleado_horarios", "correcciones"]) {
+  for (const fila of datos[t]) fila.empresa_id = "emp";
+}
+datos.plataforma_admins = [{ user_id: "u1" }];
+datos.usuarios = [
+  { miembro_id: "m1", user_id: "u1", correo: "laura@laespiga.mx", nombre: "Laura Gómez", rol: "dueno", activo: true, sedes: [] },
+  { miembro_id: "m2", user_id: "u2", correo: "rh@laespiga.mx", nombre: "Marcela Ríos", rol: "admin", activo: true, sedes: [] },
+  { miembro_id: "m3", user_id: "u3", correo: "centro@laespiga.mx", nombre: "Sergio Ortega", rol: "supervisor", activo: true, sedes: ["s1"] },
+  { miembro_id: "m4", user_id: "u4", correo: "consulta@laespiga.mx", nombre: null, rol: "consulta", activo: false, sedes: [] },
+];
+
 function tabla(nombre) {
   const filtros = []; let cabeza = false; let modo = "select";
   const b = {
@@ -64,7 +76,7 @@ function tabla(nombre) {
 
 const sb = {
   from: tabla,
-  rpc: async (_n, a2) => { const c = datos.correcciones.find((x) => x.id === a2.p_id); if (c) c.estado = a2.p_aprobar ? "aprobada" : "rechazada"; return { data: null, error: null }; },
+  rpc: async (n, a2) => { if (n === "miembros_de_empresa") return { data: datos.usuarios, error: null }; const c = datos.correcciones.find((x) => x.id === a2.p_id); if (c) c.estado = a2.p_aprobar ? "aprobada" : "rechazada"; return { data: null, error: null }; },
   auth: {
     getSession: async () => ({ data: { session: { user: { id: "u1", email: "dueno@ejemplo.mx", user_metadata: { nombre: "Laura Gómez" } }, access_token: "demo" } } }),
     onAuthStateChange() {}, signInWithPassword: async () => ({ error: null }), signOut: async () => { location.reload(); },
@@ -74,7 +86,11 @@ const sb = {
 
 // Las invitaciones de ejemplo no llaman a ningún servidor.
 const fetchReal = window.fetch.bind(window);
-window.fetch = (u, o) => String(u).includes("/functions/v1/crear-invitacion")
+const resp = (c) => Promise.resolve(new Response(JSON.stringify(c), { status: 200 }));
+window.fetch = (u, o) => String(u).includes("/functions/v1/administrar")
+  ? ({ listar_empresas: () => resp({ empresas: [{ id: "emp", nombre: "Panadería La Espiga (ejemplo)", usuarios: 4, empleados: 5 }, { id: "x2", nombre: "Cafetería Sol (ejemplo)", usuarios: 2, empleados: 8 }] }),
+       crear_usuario: () => resp({ correo: JSON.parse(o.body).correo, clave_temporal: "Tmp9Abc2Def3Gh", ya_existia: false }) }[JSON.parse(o.body).accion] ?? (() => resp({ ok: true })))()
+  : String(u).includes("/functions/v1/crear-invitacion")
   ? Promise.resolve(new Response(JSON.stringify({ codigo: "K7M2Q9XA", enlace: "https://wa.me/15556428542?text=ALTA%20K7M2Q9XA", expira_at: new Date(Date.now() + 72 * 3600_000).toISOString() }), { status: 200 }))
   : fetchReal(u, o);
 
