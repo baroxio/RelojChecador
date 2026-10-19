@@ -90,7 +90,9 @@ Con el número de prueba de Meta y un empleado de prueba, el mensaje de un celul
 
 Datos útiles para depurar: la tabla `mensajes_whatsapp` guarda cada mensaje entrante con su `estado` y, si falla, el `error` completo; es más fiable que la pantalla de invocaciones de Supabase, que a veces no carga.
 
-Pendiente de probar de punta a punta: aceptar el aviso, registrar entrada con ubicación y selfie, y el rechazo fuera de la geocerca.
+**Probado de punta a punta con un celular real (2026-10-19):** vinculación por código, aviso de privacidad, rechazo fuera de la geocerca (con la distancia), registro de **Entrada** con ubicación dentro de la geocerca y selfie, y confirmación con hora y sede.
+
+Pendiente de probar: salida y pausas, la secuencia inusual (por ejemplo dos entradas seguidas), la expiración de la sesión, la foto repetida y el cambio de número. Y revisar la señal `ubicacion_elegida`: en Android toda ubicación enviada trae nombre y dirección, así que la regla actual podría marcar todos los registros.
 
 ## Falta construir
 
