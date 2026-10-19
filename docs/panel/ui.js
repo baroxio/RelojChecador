@@ -21,6 +21,7 @@ const ICONOS = {
   mapa: SVG('<path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>'),
   flecha: SVG('<path d="M6 9l6 6 6-6"/>'),
   refrescar: SVG('<path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/>'),
+  usuario: SVG('<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>'),
   salir: SVG('<path d="M10 4H5v16h5"/><path d="M15 8l4 4-4 4M19 12H9"/>'),
 };
 
@@ -64,6 +65,25 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   const nombreSede = (id) => estado.sedes.find((s) => s.id === id)?.nombre ?? "";
   const puedeAdministrar = () => ["dueno", "admin"].includes(estado.miembro?.rol);
   const puedeResolver = () => ["dueno", "admin", "supervisor"].includes(estado.miembro?.rol);
+
+  function nombreUsuario() {
+    const m = estado.sesion?.user?.user_metadata ?? {};
+    const dado = m.nombre || m.full_name || m.name;
+    if (dado) return String(dado).trim();
+    // Sin nombre guardado: se arma uno legible con la parte del correo antes de la @.
+    const base = (estado.sesion?.user?.email ?? "").split("@")[0] || "Usuario";
+    return base.replace(/[._-]+/g, " ").replace(/(^|\s)(\p{L})/gu, (_, e, c) => e + c.toUpperCase());
+  }
+  const esErrorDeRed = (err) => !navigator.onLine || /Failed to fetch|NetworkError|Load failed/i.test(String(err?.message ?? err ?? ""));
+  function guardarCache(clave, datos) {
+    try { localStorage.setItem(clave, JSON.stringify({ guardado: Date.now(), datos })); } catch { /* sin almacenamiento: no pasa nada */ }
+  }
+  function leerCache(clave) {
+    try { return JSON.parse(localStorage.getItem(clave) ?? "null"); } catch { return null; }
+  }
+  function borrarCaches() {
+    try { Object.keys(localStorage).filter((k) => k.startsWith("rc:")).forEach((k) => localStorage.removeItem(k)); } catch { /* nada */ }
+  }
 
   function avisar(texto, tipo = "ok") {
     if (!avisos) return;
@@ -143,6 +163,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
 
   async function cerrarSesion() {
     clearInterval(temporizador);
+    borrarCaches();
     await sb.auth.signOut();
     estado.sesion = null; estado.miembro = null;
     pantallaAcceso();
@@ -176,18 +197,43 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   function construirEstructura() {
     const enlaces = [
       ["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"],
-      ["correcciones", "Correcciones", "#/correcciones"], ["mas", "Más", "#/mas"],
+      ["correcciones", "Correcciones", "#/correcciones"], ["usuario", "Cuenta", "#/cuenta"],
     ];
     const nav = h("nav", { class: "nav", "aria-label": "Principal" }, enlaces.map(([id, texto, href]) =>
-      h("a", { href, "data-ruta": id }, icono(id), h("span", {}, texto),
+      h("a", { href, "data-ruta": id === "usuario" ? "cuenta" : id }, icono(id), h("span", {}, texto),
         id === "correcciones" && h("span", { class: "nav__aviso", id: "aviso-correcciones", hidden: true }))));
+    const nombre = nombreUsuario();
     raiz.replaceChildren(h("div", { class: "app" },
       h("header", { class: "barra" },
         h("div", { class: "marca" }, icono("hoy"), "RelojChecador"),
-        h("div", { class: "barra__empresa" }, estado.empresa?.nombre ?? "")),
+        h("div", { class: "barra__usuario" },
+          h("span", { class: "avatar avatar--barra", "aria-hidden": "true" }, iniciales(nombre)),
+          h("div", { class: "barra__textos" },
+            h("div", { class: "barra__nombre" }, nombre),
+            h("div", { class: "barra__empresa" }, `${estado.empresa?.nombre ?? ""} · ${ROLES[estado.miembro?.rol] ?? ""}`)))),
       nav,
+      h("div", { class: "franja", id: "franja", role: "status", hidden: true }),
       h("main", { class: "contenido", id: "contenido", tabindex: "-1" })));
+    pintarFranja();
   }
+
+  // Aviso fijo sobre el menú: sin conexión, o hay una versión nueva de la aplicación.
+  function pintarFranja() {
+    const franja = document.getElementById("franja");
+    if (!franja) return;
+    const RC = window.RC;
+    const partes = [];
+    if (!navigator.onLine) partes.push(h("span", {}, "Sin conexión. Verás lo último que cargaste; los cambios no se pueden guardar."));
+    if (RC?.hayActualizacion) {
+      partes.push(h("span", {}, "Hay una versión nueva de la aplicación."),
+        h("button", { class: "boton boton--chico boton--secundario", type: "button", onclick: () => RC.aplicarActualizacion() }, "Actualizar ahora"));
+    }
+    franja.replaceChildren(...partes);
+    franja.hidden = partes.length === 0;
+  }
+  window.addEventListener("online", pintarFranja);
+  window.addEventListener("offline", pintarFranja);
+  window.addEventListener("rc:estado", pintarFranja);
 
   async function actualizarPendientes() {
     if (!puedeResolver()) return;
@@ -200,13 +246,13 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Rutas ----------
-  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, mas: vistaMas };
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, cuenta: vistaCuenta, mas: vistaCuenta };
 
   function rutear() {
     clearInterval(temporizador);
     if (!estado.sesion || !estado.miembro) return;
     const [camino, consulta] = (location.hash || "#/hoy").replace(/^#\//, "").split("?");
-    const nombre = RUTAS[camino] ? camino : "hoy";
+    const nombre = RUTAS[camino] ? (camino === "mas" ? "cuenta" : camino) : "hoy";
     const parametros = new URLSearchParams(consulta ?? "");
     estado.ruta += 1;
     const miRuta = estado.ruta;
@@ -235,6 +281,20 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         h("div", { class: "cabecera__acciones" }, selector, botonActualizar)),
       zona);
 
+    const claveHoy = `rc:hoy:${estado.sesion.user.id}`;
+    function mostrar(datos, deCache) {
+      const filtrados = datos.empleados.filter((e) => estado.sedeFiltro === "todas" || e.sede_id === estado.sedeFiltro);
+      const ahoraVista = deCache ? new Date(deCache.guardado) : new Date();
+      const filas = resumenDelDia(filtrados, datos.registros, ahoraVista, tzPorSede(),
+        { horarios: datos.horarios, horarioDias: datos.horarioDias, empleadoHorarios: datos.empleadoHorarios });
+      const hora = deCache ? new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }).format(new Date(deCache.guardado)) : null;
+      // replaceChildren convierte lo que no es un nodo en texto ("null"): solo se pasan nodos.
+      zona.replaceChildren(...[
+        deCache && h("div", { class: "aviso-bloque", style: "margin-bottom:.75rem" }, `Sin conexión. Esto es lo último que cargaste (${hora}); puede estar desactualizado.`),
+        pintarHoy(filas),
+      ].filter(Boolean));
+    }
+
     async function cargar(silencioso = false) {
       if (!silencioso) zona.replaceChildren(esqueletos(5));
       try {
@@ -247,11 +307,14 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia")),
         ]);
         if (!ctx.vigente()) return;
-        const filtrados = empleados.filter((e) => estado.sedeFiltro === "todas" || e.sede_id === estado.sedeFiltro);
-        const filas = resumenDelDia(filtrados, registros, new Date(), tzPorSede(), { horarios, horarioDias, empleadoHorarios });
-        zona.replaceChildren(pintarHoy(filas));
+        const datos = { empleados, registros, horarios, horarioDias, empleadoHorarios };
+        guardarCache(claveHoy, datos);
+        mostrar(datos, null);
       } catch (err) {
-        if (ctx.vigente()) zona.replaceChildren(bloqueError(err, () => cargar()));
+        if (!ctx.vigente()) return;
+        const copia = esErrorDeRed(err) ? leerCache(claveHoy) : null;
+        if (copia) mostrar(copia.datos, copia);
+        else zona.replaceChildren(bloqueError(err, () => cargar()));
       }
     }
     await cargar();
@@ -728,17 +791,67 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     if (pre && puedeResolver()) mostrarFormulario(pre);
   }
 
-  // ---------- Más ----------
-  function vistaMas(cont) {
-    cont.replaceChildren(
-      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Más"), h("p", {}, "Tu cuenta y tu empresa"))),
-      h("ul", { class: "lista" },
-        h("li", { class: "fila", style: "grid-template-columns:1fr auto" }, h("span", {}, h("div", { class: "fila__nombre" }, estado.empresa?.nombre ?? ""), h("div", { class: "fila__sub" }, "Empresa")), h("span", { class: "chip" }, ROLES[estado.miembro.rol] ?? estado.miembro.rol)),
-        h("li", { class: "fila", style: "grid-template-columns:1fr" }, h("span", {}, h("div", { class: "fila__nombre" }, estado.sesion.user.email), h("div", { class: "fila__sub" }, "Sesión iniciada"))),
-        estado.sedes.map((s) => h("li", { class: "fila", style: "grid-template-columns:1fr" }, h("span", {}, h("div", { class: "fila__nombre" }, s.nombre), h("div", { class: "fila__sub" }, `Sede · ${s.zona_horaria}`))))),
-      h("div", { class: "formulario__acciones", style: "margin-top:1rem" },
-        h("a", { class: "boton boton--secundario", href: "../privacidad.html", target: "_blank", rel: "noopener" }, "Aviso de privacidad"),
-        h("button", { class: "boton boton--secundario", type: "button", onclick: cerrarSesion }, icono("salir"), "Cerrar sesión")));
+  // ---------- Cuenta y ayuda ----------
+  const DESARROLLADOR = { nombre: "Jose Rigoberto Barocio Sida", correo: "jose.rigoberto@gmail.com", sitio: "Guadalajara, Jalisco, México" };
+
+  function vistaCuenta(cont, ctx) {
+    const pintar = () => {
+      if (!ctx.vigente()) { window.removeEventListener("rc:estado", pintar); return; }
+      const RC = window.RC ?? {};
+      const nombre = nombreUsuario();
+      const botonActualizar = h("button", { class: "boton boton--secundario boton--chico", type: "button",
+        onclick: async (e) => {
+          const b = e.currentTarget; b.setAttribute("aria-busy", "true"); b.disabled = true;
+          try {
+            const r = await (window.RC?.buscarActualizacion?.() ?? "no-disponible");
+            avisar(r === "nueva" ? "Hay una versión nueva. Pulsa “Actualizar ahora”." : r === "al-dia" ? "Ya tienes la última versión." : "No se pudo comprobar ahora.", r === "no-disponible" ? "error" : "ok");
+          } catch { avisar("No se pudo comprobar. Revisa tu conexión.", "error"); }
+          finally { b.removeAttribute("aria-busy"); b.disabled = false; }
+        } }, icono("refrescar"), "Buscar actualización");
+      cont.replaceChildren(
+        h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Cuenta"), h("p", {}, "Tu usuario, la ayuda y la aplicación"))),
+        h("h2", { class: "seccion" }, "Tu cuenta"),
+        h("ul", { class: "lista" },
+          h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(nombre)),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, nombre), h("div", { class: "fila__sub" }, estado.sesion.user.email))),
+          h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, icono("equipo")),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, estado.empresa?.nombre ?? ""),
+              h("div", { class: "fila__sub" }, estado.sedes.length ? `${estado.sedes.length} ${estado.sedes.length === 1 ? "sede" : "sedes"}: ${estado.sedes.map((x) => x.nombre).join(", ")}` : "Sin sedes todavía")),
+            h("span", { class: "fila__fin" }, h("span", { class: "chip" }, ROLES[estado.miembro.rol] ?? estado.miembro.rol)))),
+        h("h2", { class: "seccion" }, "Ayuda y aplicación"),
+        h("ul", { class: "lista" },
+          h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, icono("refrescar")),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, "Versión de la aplicación"),
+              h("div", { class: "fila__sub" }, RC.version ? `${RC.version}${RC.hayActualizacion ? " · hay una versión nueva" : ""}` : "sin determinar")),
+            h("span", { class: "fila__fin" }, RC.hayActualizacion
+              ? h("button", { class: "boton boton--primario boton--chico", type: "button", onclick: () => RC.aplicarActualizacion() }, "Actualizar ahora")
+              : botonActualizar)),
+          h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, icono("camara")),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, "Instalar en este teléfono"),
+              h("div", { class: "fila__sub" }, RC.instalada ? "Ya está instalada: la abres como una app." : RC.puedeInstalar ? "Se agrega a la pantalla de inicio." : "En Chrome: menú ⋮, “Instalar app” o “Agregar a la pantalla de inicio”.")),
+            h("span", { class: "fila__fin" }, RC.puedeInstalar && h("button", { class: "boton boton--primario boton--chico", type: "button", onclick: () => RC.instalar() }, "Instalar"))),
+          h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, icono("mapa")),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, "Conexión"),
+              h("div", { class: "fila__sub" }, "Sin internet puedes abrir la app y ver lo último que cargaste; los cambios necesitan conexión.")),
+            h("span", { class: "fila__fin" }, h("span", { class: `chip ${navigator.onLine ? "chip--ok" : "chip--aviso"}` }, navigator.onLine ? "En línea" : "Sin conexión")))),
+        h("h2", { class: "seccion" }, "Cómo se usa"),
+        h("ul", { class: "ayuda" },
+          h("li", {}, h("strong", {}, "Hoy: "), "toca a un empleado para ver su hora, su selfie y su ubicación. Lo que falta aparece primero, en rojo."),
+          h("li", {}, h("strong", {}, "Equipo: "), "agrega al empleado y mándale la invitación por WhatsApp; él solo acepta el aviso de privacidad."),
+          h("li", {}, h("strong", {}, "Correcciones: "), "los registros no se editan; se pide una corrección y queda constancia de quién la aprobó."),
+          h("li", {}, h("strong", {}, "Señales: "), "una señal no acusa a nadie; solo avisa que conviene revisar el registro.")),
+        h("h2", { class: "seccion" }, "Desarrollador"),
+        h("ul", { class: "lista" },
+          h("li", { class: "fila fila--fija" }, h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(DESARROLLADOR.nombre)),
+            h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, DESARROLLADOR.nombre),
+              h("div", { class: "fila__sub" }, DESARROLLADOR.sitio)),
+            h("span", { class: "fila__fin" }, h("a", { class: "boton boton--secundario boton--chico", href: `mailto:${DESARROLLADOR.correo}` }, "Escribir")))),
+        h("div", { class: "formulario__acciones", style: "margin-top:1rem" },
+          h("a", { class: "boton boton--secundario", href: "../privacidad.html", target: "_blank", rel: "noopener" }, "Aviso de privacidad"),
+          h("button", { class: "boton boton--secundario", type: "button", onclick: cerrarSesion }, icono("salir"), "Cerrar sesión")));
+    };
+    window.addEventListener("rc:estado", pintar);
+    pintar();
   }
 
   // ---------- Inicio ----------

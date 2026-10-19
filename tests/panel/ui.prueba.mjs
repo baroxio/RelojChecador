@@ -8,7 +8,8 @@ for (const k of ["window", "document", "location", "navigator", "HTMLElement", "
   try { globalThis[k] = dom.window[k]; } catch { Object.defineProperty(globalThis, k, { value: dom.window[k], configurable: true }); }
 }
 dom.window.scrollTo = () => {};
-Object.defineProperty(globalThis, "navigator", { value: { clipboard: { writeText: async () => {} } }, configurable: true });
+Object.defineProperty(globalThis, "navigator", { value: { clipboard: { writeText: async () => {} }, onLine: true }, configurable: true });
+globalThis.localStorage = dom.window.localStorage;
 
 const { iniciarApp } = await import("../../docs/panel/ui.js");
 
@@ -48,6 +49,7 @@ function crearSb(sesion) {
       then(ok, mal) { return ejecutar().then(ok, mal); },
     };
     async function ejecutar() {
+      if (globalThis.__sinRed) return { data: null, error: { message: "TypeError: Failed to fetch" } };
       const filas = (datos[nombre] ?? []).filter((r) => filtros.every((f) => f(r)));
       if (modo === "insert") { llamadas.push(["insert", nombre, carga]); (datos[nombre] ??= []).push({ id: "nuevo", ...carga }); return { data: null, error: null }; }
       if (modo === "update") { llamadas.push(["update", nombre, carga]); filas.forEach((r) => Object.assign(r, carga)); return { data: null, error: null }; }
@@ -88,8 +90,13 @@ location.hash = "";
 await iniciarApp({ sb: crearSb({ user: { id: "u1", email: "dueno@prueba.mx" } }), url: "https://x.supabase.co", key: "k", raiz: document.getElementById("app"), avisos: document.getElementById("avisos") });
 await esperar(80);
 let t = texto();
-assert.match(t, /Empresa de prueba/);
+assert.match(t, /Empresa de prueba · Dueño/, "la barra muestra empresa y rol");
+assert.match(t, /Dueno/, "la barra muestra el usuario (sacado del correo)");
+assert.ok(document.querySelector(".barra__nombre"), "hay nombre grande de usuario");
+assert.ok([...document.querySelectorAll(".nav a")].some((a) => a.textContent.includes("Cuenta")), "el menú dice Cuenta");
+assert.ok(![...document.querySelectorAll(".nav a")].some((a) => a.textContent.trim() === "Más"), "ya no hay un menú Más");
 assert.match(t, /Hoy/);
+assert.ok(!/\bnull\b|undefined/.test(t), "no se cuela ningún null ni undefined en pantalla");
 assert.match(t, /Faltan/);
 assert.match(t, /Ana López/);
 assert.match(t, /En turno/);
@@ -153,6 +160,38 @@ await esperar(100);
 const rpc = llamadas.find((c) => c[0] === "rpc");
 assert.ok(rpc && rpc[1] === "resolver_correccion" && rpc[2].p_aprobar === true && rpc[2].p_id === "c1");
 console.log("OK Correcciones: pendiente visible y aprobación por la función del servidor");
+
+// 5b. Cuenta y ayuda
+for (const ruta of ["#/cuenta", "#/mas"]) {
+  location.hash = ruta;
+  window.dispatchEvent(new dom.window.Event("hashchange"));
+  await esperar(60);
+  t = texto();
+  assert.match(t, /Ayuda y aplicación/);
+  assert.match(t, /Versión de la aplicación/);
+  assert.match(t, /Jose Rigoberto Barocio Sida/);
+  assert.match(t, /Cómo se usa/);
+  assert.match(t, /Cerrar sesión/);
+}
+console.log("OK Cuenta: usuario, ayuda, actualización y datos del desarrollador (también por #/mas)");
+
+// 5c. Sin internet: Hoy muestra lo último que cargó
+location.hash = "#/hoy";
+window.dispatchEvent(new dom.window.Event("hashchange"));
+await esperar(100); // carga con red y guarda la copia
+globalThis.__sinRed = true;
+Object.defineProperty(globalThis.navigator, "onLine", { value: false, configurable: true });
+window.dispatchEvent(new dom.window.Event("offline"));
+location.hash = "#/equipo"; window.dispatchEvent(new dom.window.Event("hashchange")); await esperar(40);
+location.hash = "#/hoy"; window.dispatchEvent(new dom.window.Event("hashchange")); await esperar(100);
+t = texto();
+assert.match(t, /Sin conexión\. Esto es lo último que cargaste/);
+assert.match(t, /Luis Martínez/);
+assert.ok(!document.getElementById("franja").hidden, "la franja de sin conexión está visible");
+globalThis.__sinRed = false;
+Object.defineProperty(globalThis.navigator, "onLine", { value: true, configurable: true });
+window.dispatchEvent(new dom.window.Event("online"));
+console.log("OK sin internet: se muestra la última copia y el aviso");
 
 // 6. Texto de la base no se interpreta como HTML
 datos.empleados.push({ id: "e9", nombre: '<img src=x onerror="window.pwned=1">', telefono: "+523300000000", estado: "activo", sede_id: "s1" });

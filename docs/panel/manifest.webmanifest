@@ -1,0 +1,24 @@
+{
+  "name": "RelojChecador",
+  "short_name": "RelojChecador",
+  "description": "Control de asistencia por WhatsApp: quién llegó, quién falta y las correcciones.",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "start_url": "./?origen=app",
+  "scope": "./",
+  "id": "/RelojChecador/panel/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#101b3b",
+  "theme_color": "#101b3b",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Hoy", "url": "./#/hoy", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Correcciones", "url": "./#/correcciones", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}

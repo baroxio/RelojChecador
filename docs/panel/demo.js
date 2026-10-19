@@ -66,7 +66,7 @@ const sb = {
   from: tabla,
   rpc: async (_n, a2) => { const c = datos.correcciones.find((x) => x.id === a2.p_id); if (c) c.estado = a2.p_aprobar ? "aprobada" : "rechazada"; return { data: null, error: null }; },
   auth: {
-    getSession: async () => ({ data: { session: { user: { id: "u1", email: "dueno@ejemplo.mx" }, access_token: "demo" } } }),
+    getSession: async () => ({ data: { session: { user: { id: "u1", email: "dueno@ejemplo.mx", user_metadata: { nombre: "Laura Gómez" } }, access_token: "demo" } } }),
     onAuthStateChange() {}, signInWithPassword: async () => ({ error: null }), signOut: async () => { location.reload(); },
   },
   storage: { from: () => ({ createSignedUrl: async () => ({ data: { signedUrl: selfie }, error: null }) }) },
