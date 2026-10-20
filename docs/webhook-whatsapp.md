@@ -38,7 +38,7 @@ Reglas ya implementadas:
 - **Fuera de la geocerca:** la sesión se marca `rechazada` con motivo; no se crea registro.
 - **Selfie** requerida según empleado, si no sede, si no empresa. Por defecto, sí.
 - **Código de invitación:** solo sirve desde el teléfono dado de alta (compara los últimos 10 dígitos). Se guarda su hash, no el código.
-- **Señales de riesgo** (marcan, no bloquean): `secuencia_inusual`, `ubicacion_elegida`, `ubicacion_repetida`, `foto_repetida` (misma foto exacta por `sha256`), `cambio_numero_reciente`, `hora_desfasada`.
+- **Señales de riesgo** (marcan, no bloquean): `secuencia_inusual`, `ubicacion_elegida`, `ubicacion_repetida`, `foto_repetida` (misma foto exacta por `sha256`), `cambio_numero_reciente`, `hora_desfasada`, `registro_diferido` (el empleado escribió `entrada 8:55`: ver docs/hoja-de-ruta-panel.md, Fase 4).
 - **Errores al procesar:** el mensaje queda con `estado = 'error'` y el webhook responde 200 para que Meta no reintente en bucle.
 
 ## Invitaciones: `crear-invitacion`

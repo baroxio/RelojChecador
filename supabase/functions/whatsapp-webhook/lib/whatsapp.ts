@@ -28,6 +28,22 @@ export function enviarTexto(phoneNumberId: string, para: string, texto: string) 
   return enviar(phoneNumberId, { to: para, type: "text", text: { body: texto } });
 }
 
+/**
+ * Plantilla aprobada por Meta: es lo único que se puede enviar a quien no ha escrito en las últimas 24 horas.
+ * `parametros` llena {{1}}, {{2}}... del cuerpo en orden.
+ */
+export function enviarPlantilla(phoneNumberId: string, para: string, plantilla: string, idioma: string, parametros: string[]) {
+  return enviar(phoneNumberId, {
+    to: para,
+    type: "template",
+    template: {
+      name: plantilla,
+      language: { code: idioma },
+      components: [{ type: "body", parameters: parametros.map((text) => ({ type: "text", text })) }],
+    },
+  });
+}
+
 /** Hasta 3 botones; título de máximo 20 caracteres. */
 export function enviarBotones(
   phoneNumberId: string,

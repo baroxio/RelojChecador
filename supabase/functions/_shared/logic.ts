@@ -101,7 +101,7 @@ export function extraerMensajes(payload: any): MensajeEntrante[] {
 // --- Comandos --------------------------------------------------------------
 
 export type Comando =
-  | { accion: "registrar"; tipo: "entrada" | "salida" | "pausa" }
+  | { accion: "registrar"; tipo: "entrada" | "salida" | "pausa"; hora?: { h: number; m: number } }
   | { accion: "acepto" }
   | { accion: "no_acepto" }
   | { accion: "menu" };
@@ -129,21 +129,84 @@ export function interpretarBoton(id: string): Comando | null {
   }
 }
 
+const PALABRAS_ENTRADA = ["e", "entrada", "entro", "llegue", "checar entrada"];
+const PALABRAS_SALIDA = ["s", "salida", "salgo", "me voy", "checar salida"];
+const PALABRAS_PAUSA = ["p", "pausa", "comida", "r", "regreso", "reanudar"];
+
+function tipoDePalabra(t: string): "entrada" | "salida" | "pausa" | null {
+  if (PALABRAS_ENTRADA.includes(t)) return "entrada";
+  if (PALABRAS_SALIDA.includes(t)) return "salida";
+  if (PALABRAS_PAUSA.includes(t)) return "pausa";
+  return null;
+}
+
+/**
+ * "entrada", "salida 18:05", "entrada a las 8.55 am": la hora es la que el empleado dice que fue
+ * (por ejemplo, cuando no tenía internet). Devuelve null si el texto no trae una hora válida.
+ */
+export function horaDeclarada(t: string): { palabra: string; h: number; m: number } | null {
+  const x = t.match(/^(.+?)\s+(?:a\s+las\s+)?(\d{1,2})[:.](\d{2})\s*(am|pm|a\.m\.|p\.m\.)?$/);
+  if (!x) return null;
+  let h = Number(x[2]);
+  const m = Number(x[3]);
+  const sufijo = x[4]?.[0];
+  if (sufijo) {
+    if (h < 1 || h > 12) return null;
+    h = (h % 12) + (sufijo === "p" ? 12 : 0);
+  }
+  if (h > 23 || m > 59) return null;
+  return { palabra: x[1].trim(), h, m };
+}
+
 export function interpretarTexto(texto: string): Comando {
   const t = normalizar(texto);
-  if (["e", "entrada", "entro", "llegue", "checar entrada"].includes(t)) {
-    return { accion: "registrar", tipo: "entrada" };
-  }
-  if (["s", "salida", "salgo", "me voy", "checar salida"].includes(t)) {
-    return { accion: "registrar", tipo: "salida" };
-  }
-  if (["p", "pausa", "comida", "r", "regreso", "reanudar"].includes(t)) {
-    return { accion: "registrar", tipo: "pausa" };
-  }
+  const tipo = tipoDePalabra(t);
+  if (tipo) return { accion: "registrar", tipo };
+  const dicha = horaDeclarada(t);
+  const tipoConHora = dicha ? tipoDePalabra(dicha.palabra) : null;
+  if (dicha && tipoConHora) return { accion: "registrar", tipo: tipoConHora, hora: { h: dicha.h, m: dicha.m } };
   if (["acepto", "si acepto", "si"].includes(t)) return { accion: "acepto" };
   if (["no acepto", "no"].includes(t)) return { accion: "no_acepto" };
   return { accion: "menu" };
 }
+
+/**
+ * Instante (UTC) de la hora local `h:m` en la zona `tz`, referido a "hoy" según `ahora`.
+ * Si esa hora aún no llega hoy, se entiende que fue ayer. Devuelve null si pasaron más de 24 horas
+ * o si la hora declarada es del futuro cercano (más de 5 min adelante).
+ */
+export function resolverHoraDeclarada(hm: { h: number; m: number }, ahora: Date, tz: string): Date | null {
+  const partes = (d: Date) => {
+    const o: Record<string, string> = {};
+    for (const p of new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(d)) o[p.type] = p.value;
+    return o;
+  };
+  const aUtc = (y: number, mes: number, dia: number): Date => {
+    const objetivo = Date.UTC(y, mes - 1, dia, hm.h, hm.m);
+    let utc = objetivo;
+    for (let i = 0; i < 3; i++) {
+      const o = partes(new Date(utc));
+      const diff = Date.UTC(+o.year, +o.month - 1, +o.day, +o.hour, +o.minute) - objetivo;
+      if (diff === 0) break;
+      utc -= diff;
+    }
+    return new Date(utc);
+  };
+  const hoy = partes(ahora);
+  let candidata = aUtc(+hoy.year, +hoy.month, +hoy.day);
+  const CINCO_MIN = 5 * 60_000;
+  if (candidata.getTime() - ahora.getTime() > CINCO_MIN) {
+    const ayer = new Date(Date.UTC(+hoy.year, +hoy.month - 1, +hoy.day) - 86_400_000);
+    candidata = aUtc(ayer.getUTCFullYear(), ayer.getUTCMonth() + 1, ayer.getUTCDate());
+  }
+  const atras = ahora.getTime() - candidata.getTime();
+  return atras > 24 * 3_600_000 || atras < -CINCO_MIN ? null : candidata;
+}
+
+/** A partir de esta diferencia (min) entre la hora declarada y la del servidor se trata como registro diferido. */
+export const MINUTOS_PARA_DIFERIDO = 3;
 
 // --- Secuencia de registros ----------------------------------------------
 

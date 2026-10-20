@@ -10,7 +10,9 @@ import {
   firmaValida,
   formatearDistancia,
   interpretarBoton,
+  horaDeclarada,
   interpretarTexto,
+  resolverHoraDeclarada,
   resolverTipoPausa,
   secuenciaValida,
   selfieRequerida,
@@ -176,4 +178,33 @@ test("distancias legibles", () => {
   assert.equal(formatearDistancia(12400), "12.4 km");
   assert.equal(formatearDistancia(637434), "637 km");
   assert.equal(formatearDistancia(NaN), "una distancia desconocida");
+});
+
+test("hora declarada en el texto", () => {
+  assert.deepEqual(interpretarTexto("Entrada 8:55"), { accion: "registrar", tipo: "entrada", hora: { h: 8, m: 55 } });
+  assert.deepEqual(interpretarTexto("salida a las 18.05"), { accion: "registrar", tipo: "salida", hora: { h: 18, m: 5 } });
+  assert.deepEqual(interpretarTexto("entrada 8:55 pm"), { accion: "registrar", tipo: "entrada", hora: { h: 20, m: 55 } });
+  assert.deepEqual(interpretarTexto("Entrada 12:10 AM"), { accion: "registrar", tipo: "entrada", hora: { h: 0, m: 10 } });
+  assert.deepEqual(interpretarTexto("me voy 17:30"), { accion: "registrar", tipo: "salida", hora: { h: 17, m: 30 } });
+  assert.deepEqual(interpretarTexto("entrada"), { accion: "registrar", tipo: "entrada" });
+  assert.deepEqual(interpretarTexto("entrada 25:00"), { accion: "menu" });
+  assert.deepEqual(interpretarTexto("entrada 8:75"), { accion: "menu" });
+  assert.deepEqual(interpretarTexto("hola 8:55"), { accion: "menu" });
+  assert.equal(horaDeclarada("entrada 13:00 pm"), null);
+});
+
+test("hora declarada se convierte a instante UTC en la zona de la sede", () => {
+  const MX = "America/Mexico_City"; // UTC-6 en octubre de 2026
+  const ahora = new Date("2026-10-19T16:32:00Z"); // 10:32 local, lunes
+  assert.equal(resolverHoraDeclarada({ h: 8, m: 55 }, ahora, MX)?.toISOString(), "2026-10-19T14:55:00.000Z");
+  assert.equal(resolverHoraDeclarada({ h: 10, m: 30 }, ahora, MX)?.toISOString(), "2026-10-19T16:30:00.000Z");
+  // una hora que todavía no llega hoy se entiende como de ayer (turno nocturno)
+  assert.equal(resolverHoraDeclarada({ h: 22, m: 0 }, ahora, MX)?.toISOString(), "2026-10-19T04:00:00.000Z");
+  // unos minutos adelante se tolera (relojes desajustados)
+  assert.ok(resolverHoraDeclarada({ h: 10, m: 35 }, ahora, MX));
+  // cerca de la medianoche local no se confunde de día
+  const tarde = new Date("2026-10-20T05:50:00Z"); // 23:50 del lunes 19
+  assert.equal(resolverHoraDeclarada({ h: 23, m: 40 }, tarde, MX)?.toISOString(), "2026-10-20T05:40:00.000Z");
+  const madrugada = new Date("2026-10-20T06:10:00Z"); // 00:10 del martes 20
+  assert.equal(resolverHoraDeclarada({ h: 23, m: 40 }, madrugada, MX)?.toISOString(), "2026-10-20T05:40:00.000Z");
 });

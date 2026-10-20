@@ -44,11 +44,19 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
 - **Equipo > detalle del empleado:** asignar o quitar el horario. El cambio rige desde hoy: la asignación vigente se cierra hoy y queda en el historial (`empleado_horarios.vigencia`).
 - Pendiente: mapa dibujado para ajustar el círculo (se evitó un servicio de mapas externo por privacidad y para que el panel siga funcionando sin dependencias), jornada partida desde la pantalla (la base ya la soporta) y días festivos.
 
-## Fase 4: avisos y registro sin internet
-- Avisar por WhatsApp al empleado que quedó registrado con la empresa X. Fuera de la ventana de 24 horas, WhatsApp exige una **plantilla aprobada por Meta**. Mientras tanto, el panel ya genera el mensaje listo para enviar desde el teléfono del dueño.
-- Registro del empleado sin internet. Límite de fondo: el bot es una conversación (botón, ubicación, selfie) y sin internet el empleado no recibe los mensajes del bot. Lo que sí puede pasar es que WhatsApp guarde un mensaje enviado sin conexión y lo entregue después. Hace falta diseñar un "registro diferido" que acepte ese mensaje tardío conservando la ubicación que llevaba y marcándolo para revisión.
+## Fase 4: avisos y registro sin internet (construida, falta migrar, desplegar y probar con celular)
+**Registro sin internet ("registro diferido").** Límite de fondo: sin internet el empleado no recibe los mensajes del bot, y la hora que Meta entrega es la de **recepción en sus servidores**, no la del celular. Por eso la hora de un registro hecho sin conexión no se puede deducir; la declara el empleado:
+1. Sin internet escribe `entrada 8:55` (o `salida 18:05`, `pausa 14:00`), comparte su ubicación y manda su selfie. WhatsApp los entrega en orden al reconectar.
+2. El bot los procesa como un registro normal: se valida la geocerca con la ubicación enviada y el registro queda con la hora del servidor (los registros no se editan).
+3. Si la hora que dijo difiere más de 3 minutos de la del servidor, el registro lleva la señal `registro_diferido` y se crea una **corrección pendiente** (`modificar_hora`, origen `empleado`) con su hora. En Correcciones el supervisor la ve como "Pedida por el empleado" y la aprueba o rechaza; solo al aprobarla cambia la hora efectiva.
+- La hora debe ser de las últimas 24 h; una hora que aún no llega hoy se entiende como de ayer; más de 5 min en el futuro se rechaza.
+- Migración: `20261020000100_registro_diferido.sql` (columna `sesiones_registro.hora_declarada`).
+
+**Aviso de alta por WhatsApp.** `crear-invitacion` envía una plantilla de Meta al empleado cuando existe el secreto `WHATSAPP_PLANTILLA_ALTA`. Sin él (o si Meta falla) todo sigue como antes: el panel ofrece el botón "Enviar por WhatsApp" desde el teléfono del dueño. Para activarlo:
+1. En Meta (WhatsApp Manager > Plantillas) crear una plantilla de categoría *Utilidad*, idioma español (México), con este cuerpo y 3 variables: `Hola {{1}}, {{2}} te dio de alta para registrar tu asistencia por WhatsApp. Toca este enlace y envía el mensaje que aparece: {{3}}`
+2. Esperar su aprobación y guardar los secretos de funciones: `WHATSAPP_PLANTILLA_ALTA` (nombre exacto de la plantilla) y, si no es es_MX, `WHATSAPP_PLANTILLA_IDIOMA`.
 
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
-2. Registro sin internet: ¿una ubicación enviada sin conexión cuenta como registro (con señal de revisión), o solo queda como aviso para corregir después?
-3. Aviso de alta por WhatsApp: ¿se solicita la plantilla a Meta, o por ahora basta el mensaje desde el teléfono del dueño?
+2. ~~Registro sin internet~~ Resuelto por defecto: cuenta como registro con señal y corrección pendiente (ver Fase 4). Se puede cambiar si prefieres que solo quede como aviso.
+3. Aviso de alta por WhatsApp: el código ya está listo; falta solicitar la plantilla a Meta (pasos en la Fase 4). Mientras tanto funciona el mensaje desde el teléfono del dueño.

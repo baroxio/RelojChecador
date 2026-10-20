@@ -625,6 +625,8 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const caduca = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(inv.expira_at));
       zona.replaceChildren(h("div", { class: "invitacion", style: "margin-top:.75rem" },
         h("p", {}, `Código de ${e.nombre}: `, h("code", {}, inv.codigo)),
+        inv.aviso === "enviado" && h("p", { class: "chip chip--ok" }, `Ya le avisamos por WhatsApp a ${e.nombre}.`),
+        inv.aviso === "fallo" && h("p", { class: "nota" }, "No se pudo enviar el aviso por WhatsApp. Mándaselo con el botón de abajo."),
         h("p", { class: "nota" }, `Sirve una sola vez y solo desde el teléfono ${formatearTelefono(e.telefono)}. Si generas otra invitación, esta deja de servir. Vence el ${caduca}`),
         h("div", { class: "invitacion__acciones" },
           h("a", { class: "boton boton--primario", target: "_blank", rel: "noopener noreferrer", href: enlaceMensajeEmpleado(e.telefono, e.nombre, inv.enlace) }, icono("enviar"), "Enviar por WhatsApp"),
@@ -771,7 +773,8 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("div", { style: "display:flex; gap:.5rem; align-items:baseline; flex-wrap:wrap" },
             h("strong", {}, nombres[c.empleado_id]?.nombre ?? "Empleado"),
             h("span", { class: `chip${c.estado === "aprobada" ? " chip--ok" : c.estado === "rechazada" ? " chip--rojo" : " chip--aviso"}` },
-              c.estado === "pendiente" ? "Pendiente" : c.estado === "aprobada" ? "Aprobada" : "Rechazada")),
+              c.estado === "pendiente" ? "Pendiente" : c.estado === "aprobada" ? "Aprobada" : "Rechazada"),
+            c.origen === "empleado" && h("span", { class: "chip" }, "Pedida por el empleado")),
           h("div", {}, descripcion(c, porRegistro)),
           h("div", { class: "fila__sub", style: "white-space:normal" }, `Motivo: ${c.motivo}`),
           c.comentario_resolucion && h("div", { class: "fila__sub", style: "white-space:normal" }, `Comentario: ${c.comentario_resolucion}`),

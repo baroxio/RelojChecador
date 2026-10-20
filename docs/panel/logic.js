@@ -7,6 +7,7 @@ export const ETIQUETAS_SENALES = {
   foto_repetida: "La selfie es idéntica a una anterior",
   cambio_numero_reciente: "Cambió de teléfono hace poco",
   hora_desfasada: "El mensaje llegó con retraso",
+  registro_diferido: "Se registró después de la hora que dijo el empleado (sin internet)",
 };
 
 export const ETIQUETAS_TIPO = {

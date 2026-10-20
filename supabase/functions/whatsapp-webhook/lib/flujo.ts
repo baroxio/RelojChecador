@@ -9,8 +9,10 @@ import {
   formatearDistancia,
   interpretarBoton,
   interpretarTexto,
+  MINUTOS_PARA_DIFERIDO,
   type Comando,
   type MensajeEntrante,
+  resolverHoraDeclarada,
   resolverTipoPausa,
   secuenciaValida,
   selfieRequerida,
@@ -80,7 +82,7 @@ export async function procesarMensaje(db: SupabaseClient, m: MensajeEntrante, me
   } else if (m.tipo === "image") {
     await recibirSelfie(ctx, empleado, vinculo, sesion);
   } else if (comando?.accion === "registrar") {
-    await iniciarRegistro(ctx, empleado, vinculo, comando.tipo, sesion);
+    await iniciarRegistro(ctx, empleado, vinculo, comando.tipo, sesion, comando.hora);
   } else {
     await enviarBotones(m.phoneNumberId, m.de, `Hola ${empleado.nombre}, ¿qué quieres registrar?`, [
       { id: BOTONES.entrada, titulo: "Entrada" },
@@ -186,9 +188,24 @@ async function iniciarRegistro(
   vinculo: Fila,
   pedido: "entrada" | "salida" | "pausa",
   abierta: Fila | null,
+  horaDicha?: { h: number; m: number },
 ) {
   const { db, m } = ctx;
   const [ultimo] = await ultimoRegistro(db, empleado.id);
+
+  // Registro diferido: "entrada 8:55". La hora del registro sigue siendo la del servidor;
+  // la hora dicha se manda como corrección para que la apruebe un supervisor.
+  let horaDeclarada: Date | null = null;
+  if (horaDicha) {
+    const { data: sede } = await db.from("sedes").select("zona_horaria").eq("id", empleado.sede_id).single();
+    horaDeclarada = resolverHoraDeclarada(horaDicha, new Date(), sede?.zona_horaria ?? "America/Mexico_City");
+    if (!horaDeclarada) {
+      await enviarTexto(m.phoneNumberId, m.de, "No pude usar esa hora: debe ser de las últimas 24 horas. Escríbela así: entrada 8:55");
+      return;
+    }
+    if (Math.abs(Date.now() - horaDeclarada.getTime()) < MINUTOS_PARA_DIFERIDO * 60_000) horaDeclarada = null; // es ahora
+  }
+
   const tipo: TipoRegistro = pedido === "pausa" ? resolverTipoPausa(ultimo?.tipo ?? null) : pedido;
 
   if (abierta) await db.from("sesiones_registro").update({ estado: "expirada" }).eq("id", abierta.id);
@@ -198,13 +215,15 @@ async function iniciarRegistro(
     vinculo_id: vinculo.id,
     sede_id: empleado.sede_id,
     tipo,
+    hora_declarada: horaDeclarada?.toISOString() ?? null,
   });
   if (error) throw error;
 
   const aviso = secuenciaValida(ultimo?.tipo ?? null, tipo)
     ? ""
     : " (Ojo: tu último registro fue distinto a lo esperado; se marcará para revisión.)";
-  await pedirUbicacion(m.phoneNumberId, m.de, `Vas a registrar: ${etiqueta(tipo)}.${aviso} Toca el botón para enviar tu ubicación.`);
+  const diferido = horaDeclarada ? " Tu hora quedará pendiente de aprobación de tu supervisor." : "";
+  await pedirUbicacion(m.phoneNumberId, m.de, `Vas a registrar: ${etiqueta(tipo)}.${aviso}${diferido} Toca el botón para enviar tu ubicación.`);
 }
 
 async function recibirUbicacion(ctx: Ctx, empleado: Fila, vinculo: Fila, sesion: Fila | null) {
@@ -308,6 +327,9 @@ async function completar(
     tsWhatsapp: m.ts,
     ahora: new Date(),
   });
+  const horaDeclarada: Date | null = sesion.hora_declarada ? new Date(sesion.hora_declarada) : null;
+  const diferido = horaDeclarada !== null && Math.abs(Date.now() - horaDeclarada.getTime()) >= MINUTOS_PARA_DIFERIDO * 60_000;
+  if (diferido) senales.push("registro_diferido");
 
   const { data: registro, error } = await db.from("registros").insert({
     empresa_id: empleado.empresa_id,
@@ -324,8 +346,22 @@ async function completar(
     dentro_geocerca: true,
     medio_id: medioId,
     senales,
-  }).select("ocurrido_at").single();
+  }).select("id, ocurrido_at").single();
   if (error) throw error;
+
+  if (diferido && horaDeclarada) {
+    // El registro ya quedó guardado; si la corrección falla, el supervisor lo ve por la señal.
+    const { error: errCorr } = await db.from("correcciones").insert({
+      empresa_id: empleado.empresa_id,
+      empleado_id: empleado.id,
+      registro_id: registro.id,
+      tipo: "modificar_hora",
+      nueva_hora: horaDeclarada.toISOString(),
+      motivo: "Registro sin internet: el empleado dice que fue a esa hora.",
+      origen: "empleado",
+    });
+    if (errCorr) console.error("no se pudo crear la corrección del registro diferido", errCorr.message);
+  }
 
   await db.from("sesiones_registro").update({ estado: "completada", completada_at: new Date().toISOString(), senales })
     .eq("id", sesion.id);
@@ -338,7 +374,11 @@ async function completar(
     day: "2-digit",
     month: "short",
   }).format(new Date(registro.ocurrido_at));
-  await enviarTexto(m.phoneNumberId, m.de, `✓ ${etiqueta(sesion.tipo)} registrada. ${hora}, ${sede?.nombre ?? "tu sede"}.`);
+  const horaDicha = diferido && horaDeclarada
+    ? new Intl.DateTimeFormat("es-MX", { timeZone: sede?.zona_horaria ?? "America/Mexico_City", hour: "2-digit", minute: "2-digit" }).format(horaDeclarada)
+    : null;
+  const nota = horaDicha ? ` Quedó con la hora de ahora; tu hora (${horaDicha}) se mandó a tu supervisor para aprobarla.` : "";
+  await enviarTexto(m.phoneNumberId, m.de, `✓ ${etiqueta(sesion.tipo)} registrada. ${hora}, ${sede?.nombre ?? "tu sede"}.${nota}`);
 }
 
 // --- Utilidades ---------------------------------------------------------
