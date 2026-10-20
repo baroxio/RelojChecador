@@ -53,8 +53,9 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
 - Migración: `20261020000100_registro_diferido.sql` (columna `sesiones_registro.hora_declarada`).
 
 **Aviso de alta por WhatsApp.** `crear-invitacion` envía una plantilla de Meta al empleado cuando existe el secreto `WHATSAPP_PLANTILLA_ALTA`. Sin él (o si Meta falla) todo sigue como antes: el panel ofrece el botón "Enviar por WhatsApp" desde el teléfono del dueño. Para activarlo:
-1. En Meta (WhatsApp Manager > Plantillas) crear una plantilla de categoría *Utilidad*, idioma español (México), con este cuerpo y 3 variables: `Hola {{1}}, {{2}} te dio de alta para registrar tu asistencia por WhatsApp. Toca este enlace y envía el mensaje que aparece: {{3}}`
-2. Esperar su aprobación y guardar los secretos de funciones: `WHATSAPP_PLANTILLA_ALTA` (nombre exacto de la plantilla) y, si no es es_MX, `WHATSAPP_PLANTILLA_IDIOMA`.
+1. **Hecho el 2026-10-20:** plantilla `alta_empleado` (Utilidad, español México) enviada a revisión en la cuenta *Test WhatsApp Business Account* de Meta. Cuerpo, con 3 variables: `Hola {{1}}, ya estás dado de alta en {{2}} para registrar tu asistencia por WhatsApp. Cuando quieras empezar, abre este enlace: {{3}} Si tienes dudas, habla con tu empresa.` ({{1}} nombre, {{2}} empresa, {{3}} enlace; el código lo exige así el orden que usa `crear-invitacion`).
+   - Meta rechaza como Utilidad las plantillas que parecen un código de verificación; el primer texto ("...envía el mensaje que aparece: {{3}}") disparó esa advertencia y por eso se reescribió, y el ejemplo de {{3}} no lleva código.
+2. Cuando Meta la apruebe (estado *Active*), guardar en Supabase > Edge Functions > Secrets: `WHATSAPP_PLANTILLA_ALTA` = `alta_empleado` (y `WHATSAPP_PLANTILLA_IDIOMA` solo si no es `es_MX`; el idioma enviado es *Spanish (MEX)* = `es_MX`).
 
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
