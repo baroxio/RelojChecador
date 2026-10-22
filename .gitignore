@@ -25,3 +25,6 @@ tests/panel/package-lock.json
 # Capturas de revisión de diseño (Impeccable)
 .impeccable/review/
 .impeccable/mocks/
+
+# Token del túnel de Cloudflare
+deploy/nas/.env
