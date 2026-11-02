@@ -364,3 +364,274 @@ export function planearCambioHorario(asignaciones, hoy) {
   }
   return { borrar, cerrar };
 }
+
+// --- Reportes --------------------------------------------------------------
+
+const MAX_DIAS_REPORTE = 62;
+const HORAS_JORNADA_MAXIMA = 18; // una entrada sin salida pasado este tiempo se da por abierta
+
+export function sumarDias(fechaStr, n) {
+  const [y, m, d] = fechaStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+/** Todas las fechas 'YYYY-MM-DD' de desde a hasta, incluidas. */
+export function rangoDeFechas(desde, hasta) {
+  const fechas = [];
+  for (let f = desde; f <= hasta && fechas.length <= MAX_DIAS_REPORTE; f = sumarDias(f, 1)) fechas.push(f);
+  return fechas;
+}
+
+export const PERIODOS = [
+  ["semana", "Esta semana"],
+  ["semana_pasada", "Semana pasada"],
+  ["quincena", "Esta quincena"],
+  ["mes", "Este mes"],
+  ["mes_pasado", "Mes pasado"],
+  ["personalizado", "Elegir fechas"],
+];
+
+function ultimoDiaDelMes(anio, mes) {
+  return new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+}
+
+/** Periodo predefinido {desde, hasta} (fechas locales) calculado desde `hoy`. La semana empieza en lunes. */
+export function periodoPredefinido(clave, hoy) {
+  const [y, m, d] = hoy.split("-").map(Number);
+  const mes2 = (n) => String(n).padStart(2, "0");
+  const diasDesdeLunes = (diaSemana(hoy) + 6) % 7;
+  switch (clave) {
+    case "semana": return { desde: sumarDias(hoy, -diasDesdeLunes), hasta: hoy };
+    case "semana_pasada": {
+      const lunes = sumarDias(hoy, -diasDesdeLunes - 7);
+      return { desde: lunes, hasta: sumarDias(lunes, 6) };
+    }
+    case "quincena": return d <= 15
+      ? { desde: `${y}-${mes2(m)}-01`, hasta: hoy }
+      : { desde: `${y}-${mes2(m)}-16`, hasta: hoy };
+    case "mes": return { desde: `${y}-${mes2(m)}-01`, hasta: hoy };
+    case "mes_pasado": {
+      const ma = m === 1 ? 12 : m - 1;
+      const ya = m === 1 ? y - 1 : y;
+      return { desde: `${ya}-${mes2(ma)}-01`, hasta: `${ya}-${mes2(ma)}-${ultimoDiaDelMes(ya, ma)}` };
+    }
+    default: return null;
+  }
+}
+
+/** Error de un periodo elegido a mano, o null. */
+export function errorDePeriodo(desde, hasta) {
+  const ok = (f) => /^\d{4}-\d{2}-\d{2}$/.test(f ?? "");
+  if (!ok(desde) || !ok(hasta)) return "Elige la fecha de inicio y la de fin.";
+  if (hasta < desde) return "La fecha de fin no puede ser anterior a la de inicio.";
+  if (rangoDeFechas(desde, hasta).length > MAX_DIAS_REPORTE) return `El periodo no puede pasar de ${MAX_DIAS_REPORTE} días.`;
+  return null;
+}
+
+/**
+ * Arma las jornadas de un empleado a partir de sus registros ordenados.
+ * Una jornada empieza en una entrada y termina en la siguiente salida; las pausas se descuentan.
+ * Cada jornada pertenece al día local de su entrada (un turno nocturno cuenta el día en que empezó).
+ * Devuelve { jornadas, sueltos }: sueltos son registros que no pertenecen a ninguna jornada
+ * (por ejemplo, una salida sin entrada).
+ */
+export function armarJornadas(registros, tz, ahora) {
+  const orden = registros
+    .map((r) => ({ ...r, instante: new Date(r.hora_efectiva) }))
+    .sort((a, b) => a.instante - b.instante);
+  const jornadas = [];
+  const sueltos = [];
+  let j = null;
+  const cerrar = (abierta) => {
+    if (!j) return;
+    j.abierta = abierta;
+    jornadas.push(j);
+    j = null;
+  };
+  for (const r of orden) {
+    if (j && r.instante - j.entrada.instante > HORAS_JORNADA_MAXIMA * 3600_000) cerrar(true);
+    if (r.tipo === "entrada") {
+      if (j) cerrar(true); // dos entradas seguidas: la primera quedó sin salida
+      j = { entrada: r, salida: null, pausaMs: 0, pausaDesde: null, registros: [r], fecha: fechaLocal(r.instante, tz) };
+    } else if (!j) {
+      sueltos.push(r);
+    } else {
+      j.registros.push(r);
+      if (r.tipo === "pausa_inicio") j.pausaDesde = r.instante;
+      else if (r.tipo === "pausa_fin" && j.pausaDesde) { j.pausaMs += r.instante - j.pausaDesde; j.pausaDesde = null; }
+      else if (r.tipo === "salida") {
+        if (j.pausaDesde) { j.pausaMs += r.instante - j.pausaDesde; j.pausaDesde = null; }
+        j.salida = r;
+        cerrar(false);
+      }
+    }
+  }
+  if (j) {
+    // Sin salida: sigue en turno si es reciente; si no, quedó abierta.
+    const reciente = ahora - j.entrada.instante < HORAS_JORNADA_MAXIMA * 3600_000;
+    cerrar(!reciente);
+    jornadas.at(-1).enCurso = reciente;
+    jornadas.at(-1).abierta = !reciente;
+  }
+  for (const x of jornadas) {
+    x.minutos = x.salida ? Math.max(0, Math.round((x.salida.instante - x.entrada.instante - x.pausaMs) / 60000)) : null;
+    x.pausaMin = Math.round(x.pausaMs / 60000);
+  }
+  return { jornadas, sueltos };
+}
+
+export const ETIQUETA_ESTADO_DIA = {
+  asistio: "Asistió",
+  retardo: "Retardo",
+  falta: "Falta",
+  descanso: "Descanso",
+  descanso_trabajado: "Trabajó en descanso",
+  sin_alta: "Fuera de alta",
+  sin_horario: "Sin horario",
+  pendiente: "Por llegar",
+  en_curso: "En turno",
+  incompleto: "Sin salida",
+};
+
+/**
+ * Reporte de asistencia por periodo.
+ * - empleados: filas de empleados. registros: filas de registros_efectivos (con margen de un día por lado).
+ * - desde/hasta: fechas locales. ahora: Date. datos: { horarios, horarioDias, empleadoHorarios }.
+ * Devuelve { fechas, filas } con una fila por empleado: { empleado, dias: [...], totales }.
+ * Un día sin registros cuenta como falta solo si el empleado tenía horario laboral ese día, ya había
+ * ingresado y no estaba dado de baja; el de hoy queda "por llegar" hasta una hora después de su entrada.
+ */
+export function reporteAsistencia({ empleados, registros, desde, hasta, ahora, tzPorSede, datos = {} }) {
+  const fechas = rangoDeFechas(desde, hasta);
+  const porEmpleado = new Map();
+  for (const r of registros) {
+    if (!porEmpleado.has(r.empleado_id)) porEmpleado.set(r.empleado_id, []);
+    porEmpleado.get(r.empleado_id).push(r);
+  }
+  const filas = [];
+  for (const emp of empleados) {
+    const propios = porEmpleado.get(emp.id) ?? [];
+    const tz = tzPorSede[emp.sede_id] ?? "America/Mexico_City";
+    const { jornadas, sueltos } = armarJornadas(propios, tz, ahora);
+    const enPeriodo = jornadas.filter((x) => x.fecha >= desde && x.fecha <= hasta);
+    const sueltosPeriodo = sueltos.filter((r) => { const f = fechaLocal(r.instante, tz); return f >= desde && f <= hasta; });
+    if (emp.estado === "invitado" && !enPeriodo.length) continue;
+    if (emp.estado === "baja" && !enPeriodo.length && !sueltosPeriodo.length) continue;
+    const hoy = fechaLocal(ahora, tz);
+    const ingreso = emp.fecha_ingreso ?? (emp.creado_at ? fechaLocal(new Date(emp.creado_at), tz) : null);
+    const baja = emp.fecha_baja ?? null;
+    const dias = fechas.map((fecha) => {
+      const delDia = enPeriodo.filter((x) => x.fecha === fecha);
+      const horario = horarioDelDia(emp.id, fecha, datos);
+      const dia = { fecha, estado: null, entrada: null, salida: null, minutos: 0, retardoMin: 0, jornadas: delDia, sueltos: sueltosPeriodo.filter((r) => fechaLocal(r.instante, tz) === fecha), senales: [], corregido: false, horario };
+      if (delDia.length) {
+        const primera = delDia[0];
+        dia.entrada = horaLocal(primera.entrada.instante, tz);
+        const ultima = delDia.at(-1);
+        dia.salida = ultima.salida ? horaLocal(ultima.salida.instante, tz) : null;
+        dia.minutos = delDia.reduce((s, x) => s + (x.minutos ?? 0), 0);
+        dia.retardoMin = minutosDeRetardo(dia.entrada, horario);
+        dia.senales = [...new Set(delDia.flatMap((x) => x.registros.flatMap((r) => r.senales ?? [])))];
+        dia.corregido = delDia.some((x) => x.registros.some((r) => r.corregido));
+        if (delDia.some((x) => x.enCurso)) dia.estado = "en_curso";
+        else if (delDia.some((x) => x.abierta)) dia.estado = "incompleto";
+        else if (horario && !horario.laboral) dia.estado = "descanso_trabajado";
+        else dia.estado = dia.retardoMin > 0 ? "retardo" : "asistio";
+      } else if (!horario) {
+        dia.estado = "sin_horario";
+      } else if (!horario.laboral) {
+        dia.estado = "descanso";
+      } else if (fecha > hoy) {
+        dia.estado = "pendiente";
+      } else if ((ingreso && fecha < ingreso) || (baja && fecha >= baja)) {
+        dia.estado = "sin_alta"; // fuera de su relación laboral: no cuenta como falta
+      } else if (fecha === hoy) {
+        // Hoy solo es falta una hora después de la entrada esperada.
+        const limite = aMinutos(horario.entradas[0] ?? "00:00") + 60;
+        dia.estado = minutosDelDia(ahora, tz) < limite ? "pendiente" : "falta";
+      } else {
+        dia.estado = "falta";
+      }
+      return dia;
+    });
+    const cuenta = (e) => dias.filter((d) => d.estado === e).length;
+    const conRetardo = dias.filter((d) => d.retardoMin > 0);
+    const totales = {
+      asistencias: dias.filter((d) => ["asistio", "retardo", "descanso_trabajado", "en_curso", "incompleto"].includes(d.estado)).length,
+      faltas: cuenta("falta"),
+      retardos: conRetardo.length,
+      minutosRetardo: conRetardo.reduce((s, d) => s + d.retardoMin, 0),
+      minutos: dias.reduce((s, d) => s + d.minutos, 0),
+      sinSalida: cuenta("incompleto"),
+      descansosTrabajados: cuenta("descanso_trabajado"),
+      sinHorario: cuenta("sin_horario"),
+      corregidos: dias.filter((d) => d.corregido).length,
+      conSenales: dias.filter((d) => d.senales.length).length,
+    };
+    filas.push({ empleado: emp, tz, dias, totales });
+  }
+  filas.sort((a, b) => a.empleado.nombre.localeCompare(b.empleado.nombre, "es"));
+  return { fechas, filas };
+}
+
+/** Suma de totales de varias filas (para el encabezado del reporte). */
+export function totalesGenerales(filas) {
+  const t = { empleados: filas.length, asistencias: 0, faltas: 0, retardos: 0, minutos: 0, sinSalida: 0 };
+  for (const f of filas) {
+    t.asistencias += f.totales.asistencias; t.faltas += f.totales.faltas; t.retardos += f.totales.retardos;
+    t.minutos += f.totales.minutos; t.sinSalida += f.totales.sinSalida;
+  }
+  return t;
+}
+
+/** "42 h 30 min" o "—" si no hay minutos. Para tablas y CSV. */
+export function formatearHoras(minutos) {
+  if (!minutos) return "0 h";
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return m ? `${h} h ${String(m).padStart(2, "0")} min` : `${h} h`;
+}
+
+/** Horas como decimal con 2 cifras (para nómina y hojas de cálculo). */
+export function horasDecimales(minutos) {
+  return (minutos / 60).toFixed(2);
+}
+
+/** Texto seguro para una celda CSV: comillas dobles y protección contra fórmulas de hoja de cálculo. */
+export function celdaCSV(valor) {
+  let t = valor === null || valor === undefined ? "" : String(valor);
+  if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = `'${t}`;
+  return /[",\n\r;]/.test(t) ? `"${t.replaceAll('"', '""')}"` : t;
+}
+
+/** CSV con BOM, para que Excel lo abra con acentos. Separador coma. */
+export function aCSV(encabezados, filas) {
+  const lineas = [encabezados, ...filas].map((fila) => fila.map(celdaCSV).join(","));
+  return "﻿" + lineas.join("\r\n") + "\r\n";
+}
+
+export function filasCSVResumen(reporte, nombreSede) {
+  return reporte.filas.map((f) => [
+    f.empleado.num_empleado ?? "", f.empleado.nombre, nombreSede(f.empleado.sede_id),
+    f.totales.asistencias, f.totales.faltas, f.totales.retardos, f.totales.minutosRetardo,
+    f.totales.descansosTrabajados, f.totales.sinSalida, horasDecimales(f.totales.minutos),
+  ]);
+}
+export const ENCABEZADOS_CSV_RESUMEN = ["Núm. empleado", "Empleado", "Sede", "Asistencias", "Faltas", "Retardos", "Minutos de retardo", "Descansos trabajados", "Días sin salida", "Horas trabajadas"];
+
+export function filasCSVDetalle(reporte, nombreSede) {
+  const filas = [];
+  for (const f of reporte.filas) {
+    for (const d of f.dias) {
+      if (d.estado === "pendiente") continue;
+      filas.push([
+        d.fecha, f.empleado.num_empleado ?? "", f.empleado.nombre, nombreSede(f.empleado.sede_id),
+        ETIQUETA_ESTADO_DIA[d.estado] ?? d.estado, d.entrada ?? "", d.salida ?? "",
+        d.retardoMin || "", horasDecimales(d.minutos), d.corregido ? "Sí" : "",
+        d.senales.map(etiquetaSenal).join("; "),
+      ]);
+    }
+  }
+  return filas;
+}
+export const ENCABEZADOS_CSV_DETALLE = ["Fecha", "Núm. empleado", "Empleado", "Sede", "Estado", "Entrada", "Salida", "Minutos de retardo", "Horas trabajadas", "Con corrección", "Señales"];

@@ -42,12 +42,14 @@ const llamadas = [];
 
 function crearSb(sesion) {
   function tabla(nombre) {
-    const filtros = []; let modo = "select"; let carga = null; let cabeza = false; let unico = false;
+    const filtros = []; let modo = "select"; let carga = null; let cabeza = false; let unico = false; let rango = null;
     const b = {
       select(_c, o) { if (o?.head) cabeza = true; return b; },
       eq(c, v) { filtros.push((r) => r[c] === v); return b; },
       neq(c, v) { filtros.push((r) => r[c] !== v); return b; },
       gte(c, v) { filtros.push((r) => String(r[c]) >= String(v)); return b; },
+      lt(c, v) { filtros.push((r) => String(r[c]) < String(v)); return b; },
+      range(a, z) { rango = [a, z]; return b; },
       in(c, vs) { filtros.push((r) => vs.includes(r[c])); return b; },
       order() { return b; }, limit() { return b; },
       insert(v) { modo = "insert"; carga = v; return b; },
@@ -67,6 +69,7 @@ function crearSb(sesion) {
       }
       if (modo === "delete") { llamadas.push(["delete", nombre, filas.map((r) => r.id)]); datos[nombre] = (datos[nombre] ?? []).filter((r) => !filas.includes(r)); return { data: null, error: null }; }
       if (modo === "update") { llamadas.push(["update", nombre, carga]); filas.forEach((r) => Object.assign(r, carga)); return { data: null, error: null }; }
+      if (rango) return { data: filas.slice(rango[0], rango[1] + 1), error: null };
       return cabeza ? { data: null, count: filas.length, error: null } : { data: filas, error: null };
     }
     return b;
@@ -187,6 +190,47 @@ await esperar(100);
 const rpc = llamadas.find((c) => c[0] === "rpc");
 assert.ok(rpc && rpc[1] === "resolver_correccion" && rpc[2].p_aprobar === true && rpc[2].p_id === "c1");
 console.log("OK Correcciones: pendiente visible y aprobación por la función del servidor");
+
+// 5a. Reportes
+datos.horarios = [{ id: "h1", empresa_id: "emp", tolerancia_retardo_min: 10 }];
+datos.horario_dias = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ horario_id: "h1", dia_semana: d, hora_entrada: "00:00:00" }));
+datos.empleado_horarios = [{ empresa_id: "emp", empleado_id: "e1", horario_id: "h1", vigencia: "[2020-01-01,)" }];
+datos.empleados.find((e) => e.id === "e1").fecha_ingreso = "2020-01-01";
+location.hash = "#/reportes";
+window.dispatchEvent(new dom.window.Event("hashchange"));
+await esperar(120);
+t = texto();
+assert.match(t, /Reportes/);
+assert.ok(!/\bfalse\b|\bnull\b|undefined/.test(t), "no debe haber valores sueltos en pantalla");
+assert.match(t, /Esta semana/);
+assert.match(t, /Ana López/);       // activa, sin registros: aparece
+assert.match(t, /Luis Martínez/);   // con una entrada reciente
+assert.ok(!/Rosa Pérez/.test(t), "un empleado invitado sin registros no entra al reporte");
+const botonResumen = [...document.querySelectorAll("button")].find((b) => b.textContent.startsWith("Descargar resumen"));
+assert.ok(botonResumen);
+let blobs = [];
+dom.window.URL.createObjectURL = (b) => { blobs.push(b); return "blob:x"; };
+dom.window.URL.revokeObjectURL = () => {};
+globalThis.URL = dom.window.URL; globalThis.Blob = dom.window.Blob;
+dom.window.HTMLAnchorElement.prototype.click = function () { blobs.at(-1).descarga = this.download; };
+botonResumen.click();
+await esperar();
+assert.match(blobs[0].descarga, /^asistencia_empresa_de_prueba_\d{4}-\d{2}-\d{2}_a_\d{4}-\d{2}-\d{2}\.csv$/);
+assert.ok(blobs[0].size > 50);
+// detalle de un empleado
+document.querySelector('button[aria-controls="rep-e2"]').click();
+await esperar();
+assert.match(document.getElementById("rep-e2").textContent, /Entrada/);
+// periodo personalizado inválido
+const selPeriodo = document.getElementById("rep-periodo");
+selPeriodo.value = "personalizado"; selPeriodo.dispatchEvent(new dom.window.Event("change"));
+await esperar(60);
+document.getElementById("rep-desde").value = "2026-11-05"; document.getElementById("rep-hasta").value = "2026-11-01";
+document.getElementById("rep-hasta").dispatchEvent(new dom.window.Event("change"));
+await esperar(60);
+assert.match(texto(), /no puede ser anterior/);
+console.log("OK Reportes: periodo, empleados, detalle, exportación y validación de fechas");
+datos.horarios = []; datos.horario_dias = []; datos.empleado_horarios = [];
 
 // 5b. Cuenta y ayuda
 for (const ruta of ["#/cuenta", "#/mas"]) {

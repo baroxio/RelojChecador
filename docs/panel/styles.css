@@ -306,3 +306,22 @@ button.fila[aria-expanded="true"] .fila__flecha { transform: rotate(180deg); }
 .opcion input { width: 1.25rem; height: 1.25rem; accent-color: var(--tinta-700); }
 .nav a span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 55.99rem) { .nav a { font-size: 0.75rem; } }
+
+/* ---------- Reportes ---------- */
+.filtros { margin-bottom: 1rem; }
+.cuadricula--dos { grid-template-columns: 1fr 1fr; }
+.metricas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin-bottom: 0.9rem; }
+.metrica { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); padding: 0.75rem 0.9rem; }
+.metrica__valor { font-size: var(--t-xl, 1.5rem); font-weight: 750; letter-spacing: -0.01em; line-height: 1.15; }
+.metrica__texto { color: var(--suave); font-size: var(--t-xs); font-weight: 600; }
+.metrica--alerta { border-color: #e3b3af; background: #fff6f5; }
+.metrica--alerta .metrica__valor { color: var(--rojo); }
+.tabla-envoltura { overflow-x: auto; padding-top: 0.5rem; }
+.tabla { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
+.tabla th, .tabla td { text-align: left; padding: 0.5rem 0.5rem 0.5rem 0; border-bottom: 1px solid var(--linea); vertical-align: top; }
+.tabla thead th { color: var(--suave); font-size: var(--t-xs); font-weight: 650; }
+.tabla tbody th { font-weight: 600; white-space: nowrap; }
+@media (min-width: 40rem) { .metricas { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tabla td:nth-child(n+3) { white-space: nowrap; }
+.metrica__valor { white-space: nowrap; }
+@media (max-width: 26rem) { .metrica__valor { font-size: var(--t-lg); } }

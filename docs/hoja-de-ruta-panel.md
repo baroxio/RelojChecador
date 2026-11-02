@@ -56,6 +56,18 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
 1. En Meta (WhatsApp Manager > Plantillas) crear una plantilla de categoría *Utilidad*, idioma español (México), con este cuerpo y 3 variables: `Hola {{1}}, {{2}} te dio de alta para registrar tu asistencia por WhatsApp. Toca este enlace y envía el mensaje que aparece: {{3}}`
 2. Esperar su aprobación y guardar los secretos de funciones: `WHATSAPP_PLANTILLA_ALTA` (nombre exacto de la plantilla) y, si no es es_MX, `WHATSAPP_PLANTILLA_IDIOMA`.
 
+## Fase 5: reportes (primera entrega construida; falta probarla con datos reales)
+Pantalla **Reportes** en el menú, para todos los roles (el supervisor ve solo sus sedes por RLS). No necesita migración ni función de servidor: lee `registros_efectivos` (con las correcciones aprobadas ya aplicadas), empleados y horarios con la sesión del usuario.
+- **Reporte de asistencia por periodo:** esta semana, semana pasada, quincena, mes, mes pasado o fechas elegidas (máximo 62 días), con filtro por sede. Por empleado: asistencias, faltas, retardos, horas trabajadas y, al tocarlo, el detalle día por día (estado, entrada, salida, horas, si hubo corrección o señales).
+- **Reglas de cálculo** (en `docs/panel/logic.js`, con pruebas):
+  - Una jornada empieza en una entrada y termina en la siguiente salida; las pausas se descuentan y un turno nocturno cuenta el día en que empezó.
+  - Falta = día laboral según el horario de entonces, sin registros, dentro de su alta (ingreso y baja). Hoy cuenta como falta una hora después de la entrada esperada.
+  - Retardo = primera entrada del día pasada la tolerancia del horario.
+  - Sin horario asignado no se calculan faltas ni retardos. Un día sin salida no suma horas y se avisa.
+  - Trabajar en un día de descanso se muestra aparte.
+- **Exportar a CSV** (abre en Excel con acentos): resumen por empleado y detalle por día. Las celdas que empiezan con `=`, `+`, `-` o `@` se protegen contra fórmulas.
+- Pendiente de reportes: PDF, reporte para inspección STPS (registros con sello y traza de correcciones), horas extra, salida anticipada, días festivos, prenómina y exportación para sistemas de nómina.
+
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
 2. ~~Registro sin internet~~ Resuelto por defecto: cuenta como registro con señal y corrección pendiente (ver Fase 4). Se puede cambiar si prefieres que solo quede como aviso.
