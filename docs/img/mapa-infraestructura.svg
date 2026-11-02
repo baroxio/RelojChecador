@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1340" width="1800" height="1340" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<defs>
+<marker id="f-1a7f4b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f4b"/></marker>
+<marker id="s-1a7f4b" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#1a7f4b"/></marker>
+<marker id="f-2457c5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2457c5"/></marker>
+<marker id="s-2457c5" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#2457c5"/></marker>
+<marker id="f-c25b00" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#c25b00"/></marker>
+<marker id="s-c25b00" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#c25b00"/></marker>
+<marker id="f-6b3fb5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3fb5"/></marker>
+<marker id="s-6b3fb5" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#6b3fb5"/></marker>
+<marker id="f-6b7599" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b7599"/></marker>
+<marker id="s-6b7599" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#6b7599"/></marker>
+</defs>
+<rect width="1800" height="1340" fill="#f5f7fc"/>
+<text x="30" y="44" font-size="30" font-weight="800" fill="#17275a" text-anchor="start">RelojChecador · mapa de infraestructura</text>
+<text x="30" y="70" font-size="15" font-weight="400" fill="#5a6480" text-anchor="start">Qué servicios y cuentas existen, dónde corre cada pieza, cómo se conectan y en qué estado está cada una</text>
+<rect x="20" y="100" width="290" height="990" rx="18" fill="#fff8ec" stroke="#ecd9b0" stroke-width="1.5"/>
+<text x="36" y="126" font-size="12.5" font-weight="800" fill="#8a5a00" text-anchor="start">TUS EQUIPOS Y LOS DE TUS USUARIOS</text>
+<rect x="340" y="100" width="420" height="430" rx="18" fill="#eef1f7" stroke="#c3cbe0" stroke-width="1.5"/>
+<text x="356" y="126" font-size="12.5" font-weight="800" fill="#46527a" text-anchor="start">META  ·  cuenta de desarrollador y WhatsApp</text>
+<rect x="340" y="560" width="420" height="410" rx="18" fill="#f6f2fc" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="356" y="586" font-size="12.5" font-weight="800" fill="#4c2a8a" text-anchor="start">GITHUB  ·  cuenta baroxio</text>
+<rect x="820" y="100" width="960" height="840" rx="18" fill="#effaf4" stroke="#b4dcc6" stroke-width="1.5"/>
+<text x="836" y="126" font-size="12.5" font-weight="800" fill="#14633b" text-anchor="start">SUPABASE  ·  proyecto bclmvyifdxalnfxzjmyj (en la nube, administrado)</text>
+<rect x="36" y="140" width="258" height="130" rx="14" fill="#fffdf8" stroke="#e0c88f" stroke-width="1.5"/>
+<text x="50" y="166" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Empleado</text>
+<rect x="224.2" y="149" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="254.1" y="164" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="50" y="190" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Celular con WhatsApp</text>
+<text x="50" y="208" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Datos móviles o Wi-Fi</text>
+<text x="50" y="226" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Su número queda vinculado en</text>
+<text x="50" y="244" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">vinculos_whatsapp</text>
+<rect x="36" y="290" width="258" height="168" rx="12" fill="#fff" stroke="#e0c88f" stroke-width="1.2"/>
+<text x="50" y="316" font-size="14" font-weight="700" fill="#8a5a00" text-anchor="start">Cómo leer este mapa</text>
+<rect x="50" y="334" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="79.9" y="349" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<rect x="50" y="362" width="96.3" height="21" rx="10.5" fill="#c25b00"/>
+<text x="98.15" y="377" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">POR APLICAR</text>
+<rect x="50" y="390" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
+<text x="87.2" y="405" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
+<rect x="50" y="418" width="81.7" height="21" rx="10.5" fill="#b3261e"/>
+<text x="90.85" y="433" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PENDIENTE</text>
+<text x="154" y="349" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
+<text x="154" y="377" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
+<text x="154" y="405" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
+<text x="154" y="433" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
+<text x="158" y="349" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">funciona hoy</text>
+<text x="158" y="377" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">falta aplicarlo o</text>
+<text x="158" y="391" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">desplegarlo</text>
+<text x="158" y="411" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">diseñado, no hecho</text>
+<text x="158" y="439" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">trámite externo</text>
+<rect x="36" y="480" width="258" height="210" rx="14" fill="#fffdf8" stroke="#e0c88f" stroke-width="1.5"/>
+<text x="50" y="506" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Dueño y su equipo</text>
+<rect x="224.2" y="489" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="254.1" y="504" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="50" y="530" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Navegador del celular o PC</text>
+<text x="50" y="548" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">App instalada (PWA) con</text>
+<text x="50" y="566" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">service worker: abre sin internet</text>
+<text x="50" y="584" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Guarda en el equipo solo lo</text>
+<text x="50" y="602" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">último de «Hoy» (localStorage)</text>
+<text x="50" y="620" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">No hay servidor propio: la app</text>
+<text x="50" y="638" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">habla directo con Supabase</text>
+<rect x="36" y="710" width="258" height="150" rx="14" fill="#fffdf8" stroke="#e0c88f" stroke-width="1.5"/>
+<text x="50" y="736" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Tú + Claude Code</text>
+<rect x="224.2" y="719" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="254.1" y="734" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="50" y="760" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Sesión en la nube o tu equipo</text>
+<text x="50" y="778" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">git push a una rama de trabajo</text>
+<text x="50" y="796" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Aplica las migraciones a mano</text>
+<text x="50" y="814" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">en el SQL Editor de Supabase</text>
+<rect x="36" y="880" width="258" height="160" rx="14" fill="#fff" stroke="#cfd5e6" stroke-width="1.5"/>
+<text x="50" y="906" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">NAS Synology</text>
+<rect x="209.6" y="889" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
+<text x="246.8" y="904" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
+<text x="50" y="930" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Hoy: sin Docker ni Deno</text>
+<text x="50" y="948" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">accesibles, no corre nada del</text>
+<text x="50" y="966" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">sistema</text>
+<text x="50" y="984" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Plan: respaldo diario (pg_dump</text>
+<text x="50" y="1002" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">+ Hyper Backup); réplica lógica</text>
+<text x="50" y="1020" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">después, cuando haya clientes</text>
+<rect x="356" y="144" width="388" height="86" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="170" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">App de Meta (publicada)</text>
+<rect x="674.2" y="153" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="704.1" y="168" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="370" y="194" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Secreto de la app → verifica la firma de cada POST</text>
+<text x="370" y="212" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Política de privacidad pública: GitHub Pages</text>
+<rect x="356" y="238" width="388" height="100" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="264" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">WhatsApp: cuenta y número</text>
+<rect x="674.2" y="247" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="704.1" y="262" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="370" y="288" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Número de prueba de Meta, compartido (sin número</text>
+<text x="370" y="306" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">propio por cliente todavía) · WABA suscrita a la app</text>
+<text x="370" y="324" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Token de sistema para enviar mensajes y bajar selfies</text>
+<rect x="356" y="346" width="388" height="86" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="372" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Webhook configurado</text>
+<rect x="674.2" y="355" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="704.1" y="370" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="370" y="396" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">https://…supabase.co/functions/v1/whatsapp-webhook</text>
+<text x="370" y="414" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Token de verificación igual al de la función · messages</text>
+<rect x="356" y="440" width="388" height="76" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="466" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Plantilla de alta (Utilidad, es_MX)</text>
+<rect x="652.3" y="449" width="81.7" height="21" rx="10.5" fill="#b3261e"/>
+<text x="693.15" y="464" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PENDIENTE</text>
+<text x="370" y="490" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Aviso al dar de alta a un empleado. Falta pedirla en Meta</text>
+<text x="370" y="508" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">y esperar su aprobación (hoy: botón «Enviar por WhatsApp»)</text>
+<rect x="356" y="600" width="388" height="94" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="626" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">GitHub Pages (CDN de GitHub)</text>
+<rect x="674.2" y="609" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="704.1" y="624" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="370" y="650" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">baroxio.github.io/RelojChecador/ → /panel/ (app)</text>
+<text x="370" y="668" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">y /privacidad.html · publica docs/ de main</text>
+<text x="370" y="686" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">No guarda datos de nadie</text>
+<rect x="356" y="704" width="388" height="96" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="730" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Repositorio público (GitHub)</text>
+<rect x="674.2" y="713" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="704.1" y="728" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="370" y="754" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">baroxio/RelojChecador · main + rama de trabajo</text>
+<text x="370" y="772" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Código, docs, migraciones y pruebas · sin secretos</text>
+<rect x="356" y="810" width="388" height="110" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="370" y="836" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">GitHub Actions</text>
+<rect x="674.2" y="819" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="704.1" y="834" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="370" y="860" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Runner ubuntu-latest · Node 24 · Supabase CLI</text>
+<text x="370" y="878" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Corre pruebas y despliega las 3 funciones</text>
+<text x="370" y="896" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Secreto del repo: SUPABASE_ACCESS_TOKEN</text>
+<rect x="836" y="140" width="928" height="46" rx="12" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="852" y="168" font-size="15" font-weight="700" fill="#14633b" text-anchor="start">https://bclmvyifdxalnfxzjmyj.supabase.co</text>
+<text x="1752" y="168" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="end">una sola entrada HTTPS (443) para funciones, Auth, API y Storage</text>
+<rect x="836" y="200" width="452" height="276" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="852" y="226" font-size="15.5" font-weight="800" fill="#14633b" text-anchor="start">Edge Functions (Deno, sin servidor propio)</text>
+<rect x="850" y="238" width="424" height="70" rx="10" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1"/>
+<text x="864" y="260" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">whatsapp-webhook</text>
+<text x="864" y="279" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">/functions/v1/whatsapp-webhook · sin JWT: lo protege la</text>
+<text x="864" y="295" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">firma de Meta · probado con un celular real</text>
+<rect x="1204.2" y="246" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1234.1000000000001" y="261" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<rect x="850" y="316" width="424" height="70" rx="10" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1"/>
+<text x="864" y="338" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">crear-invitacion</text>
+<text x="864" y="357" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">/functions/v1/crear-invitacion · con JWT (dueño o admin)</text>
+<text x="864" y="373" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">versión con plantilla de Meta (F4) por desplegar</text>
+<rect x="1204.2" y="324" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1234.1000000000001" y="339" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<rect x="850" y="394" width="424" height="70" rx="10" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1"/>
+<text x="864" y="416" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">administrar</text>
+<text x="864" y="435" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">/functions/v1/administrar · usuarios, roles y empresas</text>
+<text x="864" y="451" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">con service_role · aún no desplegada (F2)</text>
+<rect x="1167.7" y="402" width="96.3" height="21" rx="10.5" fill="#c25b00"/>
+<text x="1215.8500000000001" y="417" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">POR APLICAR</text>
+<rect x="1304" y="200" width="460" height="276" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="1320" y="226" font-size="15.5" font-weight="800" fill="#14633b" text-anchor="start">Servicios de la plataforma</text>
+<rect x="1318" y="238" width="432" height="70" rx="10" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1"/>
+<text x="1332" y="260" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Auth  /auth/v1</text>
+<text x="1332" y="279" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">Correo y contraseña → JWT del usuario</text>
+<text x="1332" y="295" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">Quién es y qué rol tiene</text>
+<rect x="1680.2" y="246" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1710.1000000000001" y="261" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<rect x="1318" y="316" width="432" height="70" rx="10" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1"/>
+<text x="1332" y="338" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">API REST  /rest/v1</text>
+<text x="1332" y="357" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">PostgREST sobre Postgres; las reglas RLS</text>
+<text x="1332" y="373" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">filtran por empresa y por sede</text>
+<rect x="1680.2" y="324" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1710.1000000000001" y="339" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<rect x="1318" y="394" width="432" height="70" rx="10" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1"/>
+<text x="1332" y="416" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Storage  /storage/v1</text>
+<text x="1332" y="435" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">Bucket privado «selfies»; el panel pide</text>
+<text x="1332" y="451" font-size="11.5" font-weight="400" fill="#5a6480" text-anchor="start">URL firmada de 5 minutos con su sesión</text>
+<rect x="1680.2" y="402" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1710.1000000000001" y="417" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<rect x="836" y="492" width="452" height="220" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="850" y="518" font-size="15.5" font-weight="700" fill="#17275a" text-anchor="start">Postgres</text>
+<rect x="1181.7" y="501" width="96.3" height="21" rx="10.5" fill="#c25b00"/>
+<text x="1229.8500000000001" y="516" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">POR APLICAR</text>
+<rect x="1116.9" y="501" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1146.8000000000002" y="516" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="850" y="542" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Migraciones 1 a 3: aplicadas · prueba 20/20 en OK</text>
+<text x="850" y="560" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Migración 4 (usuarios y plataforma, F2): sin aplicar</text>
+<text x="850" y="578" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Migración 5 (registro diferido, F4): sin aplicar</text>
+<text x="850" y="596" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start"></text>
+<text x="850" y="614" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Tablas con empresa_id y RLS · registros inmutables</text>
+<text x="850" y="632" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Extensión btree_gist en el esquema extensions</text>
+<text x="850" y="650" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Funciones de apoyo de RLS en el esquema private</text>
+<text x="850" y="668" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Una sola base: sin réplica propia todavía</text>
+<rect x="1304" y="492" width="460" height="220" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="1318" y="518" font-size="15.5" font-weight="700" fill="#17275a" text-anchor="start">Secretos de las funciones</text>
+<rect x="1694.2" y="501" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1724.1000000000001" y="516" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="1318" y="542" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">WHATSAPP_APP_SECRET · firma de Meta</text>
+<text x="1318" y="560" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">WHATSAPP_VERIFY_TOKEN · verificación del webhook</text>
+<text x="1318" y="578" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">WHATSAPP_ACCESS_TOKEN · enviar y bajar fotos</text>
+<text x="1318" y="596" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">WHATSAPP_PLANTILLA_ALTA · nombre de la plantilla</text>
+<text x="1318" y="614" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   (aún sin crear)</text>
+<text x="1318" y="632" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">WHATSAPP_GRAPH_VERSION · opcional, por defecto v21.0</text>
+<text x="1318" y="650" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">SUPABASE_URL y SERVICE_ROLE_KEY · los pone Supabase</text>
+<text x="1318" y="668" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Se cargan con supabase secrets set o en el panel</text>
+<rect x="836" y="728" width="452" height="190" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="850" y="754" font-size="15.5" font-weight="700" fill="#17275a" text-anchor="start">Respaldos y vigilancia</text>
+<rect x="1203.6" y="737" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
+<text x="1240.8" y="752" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
+<text x="850" y="778" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Respaldos automáticos del proveedor: por confirmar</text>
+<text x="850" y="796" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   según el plan contratado</text>
+<text x="850" y="814" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Respaldo propio al NAS: diseñado, no hecho</text>
+<text x="850" y="832" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Security Advisors: pendiente de revisar con</text>
+<text x="850" y="850" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   las tablas nuevas</text>
+<text x="850" y="868" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Sin monitoreo ni alertas de errores</text>
+<rect x="1304" y="728" width="460" height="190" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="1318" y="754" font-size="15.5" font-weight="700" fill="#17275a" text-anchor="start">Panel web de Supabase</text>
+<rect x="1694.2" y="737" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
+<text x="1724.1000000000001" y="752" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
+<text x="1318" y="778" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Se usa desde el navegador, solo el dueño</text>
+<text x="1318" y="796" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">del proyecto de Supabase:</text>
+<text x="1318" y="814" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">· SQL Editor: aplicar las migraciones</text>
+<text x="1318" y="832" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">· Secrets: cargar los secretos de funciones</text>
+<text x="1318" y="850" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">· Logs y la tabla mensajes_whatsapp para</text>
+<text x="1318" y="868" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   depurar (más fiable que Invocaciones)</text>
+<path d="M294,205 L356,205" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-1a7f4b)" marker-start="url(#s-1a7f4b)"/>
+<rect x="289.4" y="171" width="71.2" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="325" y="187" font-size="12" font-weight="600" fill="#1a7f4b" text-anchor="middle">WhatsApp</text>
+<path d="M760,380 L836,380" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="748.6" y="346" width="98.80000000000001" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="798" y="362" font-size="12" font-weight="600" fill="#1a7f4b" text-anchor="middle">POST firmado</text>
+<path d="M836,440 L760,440" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="736.95" y="406" width="78.1" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="776" y="422" font-size="12" font-weight="600" fill="#1a7f4b" text-anchor="middle">Graph API</text>
+<path d="M294,545 L836,545" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)" marker-start="url(#s-2457c5)"/>
+<rect x="408.65" y="537" width="312.7" height="22" rx="11" fill="#fff" stroke="#2457c5" stroke-width="1.2"/>
+<text x="565" y="553" font-size="12" font-weight="600" fill="#2457c5" text-anchor="middle">HTTPS: login, consultas, selfies, funciones</text>
+<path d="M294,640 L356,640" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)"/>
+<rect x="306.65" y="606" width="36.7" height="22" rx="11" fill="#fff" stroke="#2457c5" stroke-width="1.2"/>
+<text x="325" y="622" font-size="12" font-weight="600" fill="#2457c5" text-anchor="middle">GET</text>
+<path d="M294,760 L356,760" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<rect x="289.4" y="726" width="71.2" height="22" rx="11" fill="#fff" stroke="#6b3fb5" stroke-width="1.2"/>
+<text x="325" y="742" font-size="12" font-weight="600" fill="#6b3fb5" text-anchor="middle">git push</text>
+<path d="M744,880 L800,880 L800,466 L836,466" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<rect x="705.75" y="688" width="188.5" height="22" rx="11" fill="#fff" stroke="#6b3fb5" stroke-width="1.2"/>
+<text x="800" y="704" font-size="12" font-weight="600" fill="#6b3fb5" text-anchor="middle">supabase functions deploy</text>
+<path d="M294,790 L318,790 L318,1005 L1534,1005 L1534,918" fill="none" stroke="#c25b00" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-c25b00)"/>
+<rect x="626.45" y="993" width="147.1" height="22" rx="11" fill="#fff" stroke="#c25b00" stroke-width="1.2"/>
+<text x="700" y="1009" font-size="12" font-weight="600" fill="#c25b00" text-anchor="middle">SQL Editor (a mano)</text>
+<path d="M165,1040 L165,1065 L1062,1065 L1062,918" fill="none" stroke="#6b7599" stroke-width="2.5" stroke-dasharray="3 6" stroke-linejoin="round" marker-end="url(#f-6b7599)"/>
+<rect x="385.2" y="1053" width="457.6" height="22" rx="11" fill="#fff" stroke="#6b7599" stroke-width="1.2"/>
+<text x="614" y="1069" font-size="12" font-weight="600" fill="#6b7599" text-anchor="middle">respaldo desde el NAS (planeado: el NAS se conecta hacia afuera)</text>
+<rect x="20" y="1112" width="590" height="206" rx="16" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="38" y="1142" font-size="15" font-weight="800" fill="#14633b" text-anchor="start">DÓNDE VIVE CADA SECRETO</text>
+<text x="38" y="1170" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Llave publicable de Supabase → en la app (config.js): es pública, la protege RLS</text>
+<text x="38" y="1193" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• service_role → solo dentro de Supabase, nunca en el panel ni en el repo</text>
+<text x="38" y="1216" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Secreto de la app, token de sistema y token de verificación de Meta →</text>
+<text x="38" y="1239" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   secretos de las funciones de Supabase</text>
+<text x="38" y="1262" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Token de acceso de Supabase → secreto de GitHub Actions</text>
+<text x="38" y="1285" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• El repositorio es público: ningún secreto se guarda ahí</text>
+<rect x="630" y="1112" width="570" height="206" rx="16" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="648" y="1142" font-size="15" font-weight="800" fill="#b3261e" text-anchor="start">SI ALGO FALLA</text>
+<text x="648" y="1170" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Supabase caído: no se registra ni se consulta asistencia</text>
+<text x="648" y="1193" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Meta caído: no entran mensajes nuevos; el panel sigue funcionando</text>
+<text x="648" y="1216" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• GitHub Pages caído: la app ya instalada abre con lo último cargado</text>
+<text x="648" y="1239" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• No hay réplica ni respaldo propio: Supabase es el único lugar de los datos</text>
+<text x="648" y="1262" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• El webhook responde 200 aun con error y lo deja en mensajes_whatsapp</text>
+<text x="648" y="1285" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   (estado = error) para revisarlo</text>
+<rect x="1220" y="1112" width="560" height="206" rx="16" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="1238" y="1142" font-size="15" font-weight="800" fill="#46527a" text-anchor="start">TODAVÍA NO EXISTE</text>
+<text x="1238" y="1170" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Dominio propio (hoy: subdominios de GitHub y de Supabase)</text>
+<text x="1238" y="1193" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Ambiente de pruebas separado de producción</text>
+<text x="1238" y="1216" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Monitoreo y alertas de errores</text>
+<text x="1238" y="1239" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Respaldos propios al NAS y réplica</text>
+<text x="1238" y="1262" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Número de WhatsApp propio por cliente (hoy uno compartido)</text>
+<text x="1238" y="1285" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Cobro y facturación</text>
+</svg>
