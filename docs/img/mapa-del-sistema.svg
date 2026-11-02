@@ -1,0 +1,362 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1360" width="1800" height="1360" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<defs>
+<marker id="f-1a7f4b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f4b"/></marker>
+<marker id="f-2457c5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2457c5"/></marker>
+<marker id="f-c25b00" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c25b00"/></marker>
+<marker id="f-6b3fb5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b3fb5"/></marker>
+</defs>
+<rect width="1800" height="1360" fill="#f5f7fc"/>
+<text x="30" y="44" font-size="30" font-weight="800" fill="#17275a" text-anchor="start">RelojChecador · mapa del sistema</text>
+<text x="30" y="70" font-size="15" font-weight="400" fill="#5a6480" text-anchor="start">Por dónde pasa cada dato, desde el celular del empleado hasta la base de datos, y cómo llega el código a producción</text>
+<line x1="880" y1="36" x2="910" y2="36" stroke="#1a7f4b" stroke-width="4"/>
+<text x="918" y="41" font-size="14" font-weight="600" fill="#1a7f4b" text-anchor="start">1 · Registro por WhatsApp</text>
+<line x1="1134.0" y1="36" x2="1164.0" y2="36" stroke="#2457c5" stroke-width="4"/>
+<text x="1172.0" y="41" font-size="14" font-weight="600" fill="#2457c5" text-anchor="start">2 · Panel</text>
+<line x1="1266.4" y1="36" x2="1296.4" y2="36" stroke="#c25b00" stroke-width="4"/>
+<text x="1304.4" y="41" font-size="14" font-weight="600" fill="#c25b00" text-anchor="start">3 · Invitar y administrar</text>
+<line x1="1520.4" y1="36" x2="1550.4" y2="36" stroke="#6b3fb5" stroke-width="4" stroke-dasharray="6 5"/>
+<text x="1558.4" y="41" font-size="14" font-weight="600" fill="#6b3fb5" text-anchor="start">4 · Despliegue</text>
+<text x="880" y="72" font-size="13" font-weight="700" fill="#5a6480" text-anchor="start">Fases:</text>
+<rect x="928" y="56" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="948.5" y="72" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<text x="974" y="72" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">núcleo</text>
+<rect x="1029.6" y="56" width="32" height="22" rx="11" fill="#0b7a75"/>
+<text x="1045.6" y="72" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F1</text>
+<text x="1066.6" y="72" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">instalable</text>
+<rect x="1148.6" y="56" width="32" height="22" rx="11" fill="#c25b00"/>
+<text x="1164.6" y="72" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F2</text>
+<text x="1185.6" y="72" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">roles</text>
+<rect x="1234.6" y="56" width="32" height="22" rx="11" fill="#7a3fb5"/>
+<text x="1250.6" y="72" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F3</text>
+<text x="1271.6" y="72" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">horarios</text>
+<rect x="1340.3999999999999" y="56" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="1356.3999999999999" y="72" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<text x="1377.3999999999999" y="72" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">sin internet</text>
+<rect x="1472.6" y="56" width="32" height="22" rx="11" fill="#b3261e"/>
+<text x="1488.6" y="72" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F5</text>
+<text x="1509.6" y="72" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">reportes</text>
+<rect x="20" y="100" width="330" height="880" rx="18" fill="#fff8ec" stroke="#ecd9b0" stroke-width="1.5"/>
+<text x="36" y="126" font-size="13" font-weight="800" fill="#8a5a00" text-anchor="start">PERSONAS Y DISPOSITIVOS</text>
+<rect x="362" y="100" width="490" height="880" rx="18" fill="#eef1f7" stroke="#c3cbe0" stroke-width="1.5"/>
+<text x="378" y="126" font-size="13" font-weight="800" fill="#46527a" text-anchor="start">INTERNET PÚBLICO  ·  HTTPS / TLS (443)  ·  DNS</text>
+<rect x="868" y="100" width="912" height="880" rx="18" fill="#effaf4" stroke="#b4dcc6" stroke-width="1.5"/>
+<text x="884" y="126" font-size="13" font-weight="800" fill="#14633b" text-anchor="start">SUPABASE  ·  proyecto bclmvyifdxalnfxzjmyj</text>
+<rect x="40" y="140" width="290" height="150" rx="14" fill="#fffdf8" stroke="#e0c88f" stroke-width="1.5"/>
+<text x="56" y="168" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">Empleado</text>
+<text x="56" y="192" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Celular con WhatsApp</text>
+<text x="56" y="212" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Manda: texto, ubicación y selfie</text>
+<text x="56" y="232" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">No instala ninguna app</text>
+<text x="56" y="252" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Sin internet: escribe «entrada 8:55»</text>
+<rect x="286" y="150" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="302.0" y="166" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<rect x="239" y="150" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="259.5" y="166" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="40" y="330" width="290" height="640" rx="14" fill="#fffdf8" stroke="#e0c88f" stroke-width="1.5"/>
+<text x="56" y="358" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">Dueño y su equipo</text>
+<text x="56" y="382" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Celular o computadora</text>
+<text x="56" y="402" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Navegador o app instalable (PWA)</text>
+<rect x="286" y="340" width="32" height="22" rx="11" fill="#0b7a75"/>
+<text x="302.0" y="356" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F1</text>
+<rect x="239" y="340" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="259.5" y="356" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="54" y="392" width="262" height="366" rx="12" fill="#fff" stroke="#e0c88f" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="66" y="416" font-size="14" font-weight="700" fill="#8a5a00" text-anchor="start">Corre dentro del navegador</text>
+<rect x="66" y="442" width="238" height="40" rx="10" fill="#fffaf0" stroke="#ecd9b0" stroke-width="1"/>
+<text x="76" y="467" font-size="12.5" font-weight="600" fill="#17275a" text-anchor="start">ui.js · pantallas del panel</text>
+<rect x="257" y="451" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="277.5" y="467" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="66" y="492" width="238" height="40" rx="10" fill="#fffaf0" stroke="#ecd9b0" stroke-width="1"/>
+<text x="76" y="517" font-size="12.5" font-weight="600" fill="#17275a" text-anchor="start">Service worker + caché</text>
+<rect x="266" y="501" width="32" height="22" rx="11" fill="#0b7a75"/>
+<text x="282.0" y="517" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F1</text>
+<rect x="66" y="542" width="238" height="40" rx="10" fill="#fffaf0" stroke="#ecd9b0" stroke-width="1"/>
+<text x="76" y="567" font-size="12.5" font-weight="600" fill="#17275a" text-anchor="start">Sesión (JWT) del usuario</text>
+<rect x="266" y="551" width="32" height="22" rx="11" fill="#c25b00"/>
+<text x="282.0" y="567" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F2</text>
+<rect x="66" y="592" width="238" height="40" rx="10" fill="#fffaf0" stroke="#ecd9b0" stroke-width="1"/>
+<text x="76" y="617" font-size="12.5" font-weight="600" fill="#17275a" text-anchor="start">Sedes, geocercas y horarios</text>
+<rect x="266" y="601" width="32" height="22" rx="11" fill="#7a3fb5"/>
+<text x="282.0" y="617" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F3</text>
+<rect x="66" y="642" width="238" height="40" rx="10" fill="#fffaf0" stroke="#ecd9b0" stroke-width="1"/>
+<text x="76" y="667" font-size="12.5" font-weight="600" fill="#17275a" text-anchor="start">logic.js · faltas, retardos, horas</text>
+<rect x="266" y="651" width="32" height="22" rx="11" fill="#b3261e"/>
+<text x="282.0" y="667" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F5</text>
+<rect x="66" y="692" width="238" height="40" rx="10" fill="#fffaf0" stroke="#ecd9b0" stroke-width="1"/>
+<text x="76" y="717" font-size="12.5" font-weight="600" fill="#17275a" text-anchor="start">Reportes y descarga de CSV</text>
+<rect x="266" y="701" width="32" height="22" rx="11" fill="#b3261e"/>
+<text x="282.0" y="717" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F5</text>
+<text x="54" y="782" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Copia local: solo lo último de «Hoy».</text>
+<text x="54" y="800" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Selfies y datos de empleados nunca</text>
+<text x="54" y="818" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">se guardan en el service worker.</text>
+<rect x="54" y="856" width="262" height="90" rx="12" fill="#fff" stroke="#e0c88f" stroke-width="1.2"/>
+<text x="66" y="880" font-size="13.5" font-weight="700" fill="#8a5a00" text-anchor="start">Lo que ve cada rol</text>
+<text x="66" y="902" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Dueño y admin: todo su negocio</text>
+<text x="66" y="920" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Supervisor: solo sus sedes</text>
+<text x="66" y="938" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Consulta: solo lectura</text>
+<rect x="382" y="140" width="450" height="150" rx="14" fill="#fff" stroke="#c3cbe0" stroke-width="1.5"/>
+<text x="398" y="168" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">Meta · WhatsApp Cloud API</text>
+<text x="398" y="192" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Servidores de WhatsApp y graph.facebook.com</text>
+<text x="398" y="212" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Entrega cada mensaje al webhook (POST firmado)</text>
+<text x="398" y="232" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Recibe las respuestas y las plantillas de aviso</text>
+<rect x="788" y="150" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="804.0" y="166" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<rect x="741" y="150" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="761.5" y="166" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="382" y="830" width="450" height="118" rx="14" fill="#fff" stroke="#c3cbe0" stroke-width="1.5"/>
+<text x="398" y="858" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">GitHub Pages (sitio estático)</text>
+<text x="398" y="882" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">baroxio.github.io/RelojChecador/panel/</text>
+<text x="398" y="902" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">HTML, CSS y JS sin compilar · carpeta docs/ de main</text>
+<text x="398" y="922" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Sirve la app; no guarda ningún dato de nadie</text>
+<rect x="788" y="840" width="32" height="22" rx="11" fill="#0b7a75"/>
+<text x="804.0" y="856" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F1</text>
+<rect x="741" y="840" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="761.5" y="856" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="382" y="334" width="450" height="124" rx="12" fill="#fff" stroke="#c3cbe0" stroke-width="1.2"/>
+<text x="398" y="358" font-size="14.5" font-weight="700" fill="#46527a" text-anchor="start">Camino de cada petición</text>
+<text x="398" y="380" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">① Wi-Fi o datos móviles → proveedor de internet (ISP)</text>
+<text x="398" y="399" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">② DNS traduce el nombre (…supabase.co, …github.io,</text>
+<text x="418" y="418" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">graph.facebook.com) a la dirección del servidor</text>
+<text x="398" y="440" font-size="12.5" font-weight="600" fill="#46527a" text-anchor="start">③ Todo viaja cifrado (TLS): nadie en medio lo lee</text>
+<rect x="888" y="140" width="322" height="408" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="904" y="168" font-size="17" font-weight="800" fill="#14633b" text-anchor="start">Edge Functions (Deno)</text>
+<rect x="902" y="182" width="294" height="112" rx="14" fill="#f6fcf9" stroke="#bfe1cf" stroke-width="1.5"/>
+<text x="918" y="210" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">whatsapp-webhook</text>
+<text x="918" y="234" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Verifica la firma de Meta (X-Hub-Signature)</text>
+<text x="918" y="254" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Valida geocerca y marca señales de riesgo</text>
+<text x="918" y="274" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Procesa el flujo: alta, ubicación, selfie</text>
+<rect x="1152" y="192" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="1168.0" y="208" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<rect x="1105" y="192" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1125.5" y="208" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="902" y="304" width="294" height="106" rx="14" fill="#fff8f0" stroke="#f0cfa6" stroke-width="1.5"/>
+<text x="918" y="332" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">crear-invitacion</text>
+<text x="918" y="356" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Solo dueño o admin (JWT)</text>
+<text x="918" y="376" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Código de 8 símbolos: se guarda su hash</text>
+<text x="918" y="396" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Aviso por plantilla de Meta</text>
+<rect x="1152" y="314" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="1168.0" y="330" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<rect x="1105" y="314" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1125.5" y="330" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="902" y="420" width="294" height="116" rx="14" fill="#fff8f0" stroke="#f0cfa6" stroke-width="1.5"/>
+<text x="918" y="448" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">administrar</text>
+<text x="918" y="472" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Usuarios, roles y empresas</text>
+<text x="918" y="492" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Contraseña temporal de un solo uso</text>
+<text x="918" y="512" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Usa la llave service_role (solo servidor)</text>
+<rect x="1152" y="430" width="32" height="22" rx="11" fill="#c25b00"/>
+<text x="1168.0" y="446" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F2</text>
+<rect x="888" y="580" width="322" height="82" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="904" y="608" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">Supabase Auth</text>
+<text x="904" y="632" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Correo y contraseña → JWT del usuario</text>
+<text x="904" y="652" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Cambio de contraseña obligatorio al primer uso</text>
+<rect x="1166" y="590" width="32" height="22" rx="11" fill="#c25b00"/>
+<text x="1182.0" y="606" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F2</text>
+<rect x="888" y="676" width="322" height="100" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
+<text x="904" y="704" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">API REST + RLS</text>
+<text x="904" y="728" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">PostgREST: cada consulta lleva el JWT del usuario</text>
+<text x="904" y="748" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">RLS filtra por empresa y por sede</text>
+<text x="904" y="768" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">rpc: resolver_correccion, miembros_de_empresa</text>
+<rect x="1166" y="686" width="32" height="22" rx="11" fill="#b3261e"/>
+<text x="1182.0" y="702" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F5</text>
+<rect x="1128" y="686" width="32" height="22" rx="11" fill="#7a3fb5"/>
+<text x="1144.0" y="702" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F3</text>
+<rect x="1081" y="686" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1101.5" y="702" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="1250" y="140" width="512" height="600" rx="16" fill="#fff" stroke="#8fb0e8" stroke-width="2"/>
+<text x="1268" y="170" font-size="18" font-weight="800" fill="#2457c5" text-anchor="start">PostgreSQL · base de datos</text>
+<text x="1268" y="190" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Fuente única de la verdad · cada fila lleva empresa_id</text>
+<rect x="1266" y="202" width="480" height="148" rx="12" fill="#f4f7ff" stroke="#c6d4f4" stroke-width="1.2"/>
+<text x="1280" y="226" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Mensajes y registros</text>
+<rect x="1706" y="210" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="1722.0" y="226" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<rect x="1659" y="210" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1679.5" y="226" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<text x="1280" y="248" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">numeros_whatsapp · vinculos_whatsapp · consentimientos</text>
+<text x="1280" y="267" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">invitaciones (solo el hash del código)</text>
+<text x="1280" y="286" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">mensajes_whatsapp (bitácora cruda, wamid único)</text>
+<text x="1280" y="305" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">sesiones_registro (intento: ubicación → selfie)</text>
+<text x="1280" y="324" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">medios (ruta y huellas de la selfie)</text>
+<text x="1280" y="343" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">registros ← INMUTABLE: no se edita ni se borra</text>
+<rect x="1266" y="360" width="480" height="84" rx="12" fill="#f4f7ff" stroke="#c6d4f4" stroke-width="1.2"/>
+<text x="1280" y="384" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Correcciones</text>
+<rect x="1697" y="368" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1717.5" y="384" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<text x="1280" y="406" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">correcciones (agregar, cambiar hora, anular + aprobación)</text>
+<text x="1280" y="425" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">vista registros_efectivos = registros + correcciones</text>
+<text x="1280" y="444" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">aprobadas (la que usan Hoy y Reportes)</text>
+<rect x="1266" y="454" width="480" height="104" rx="12" fill="#f4f7ff" stroke="#c6d4f4" stroke-width="1.2"/>
+<text x="1280" y="478" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Empresa y personas</text>
+<rect x="1706" y="462" width="32" height="22" rx="11" fill="#c25b00"/>
+<text x="1722.0" y="478" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F2</text>
+<rect x="1659" y="462" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1679.5" y="478" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<text x="1280" y="500" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">empresas · sedes · geocercas · empleados</text>
+<text x="1280" y="519" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">miembros (rol) · miembro_sedes (alcance del supervisor)</text>
+<text x="1280" y="538" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">plataforma_admins</text>
+<rect x="1266" y="568" width="480" height="80" rx="12" fill="#f4f7ff" stroke="#c6d4f4" stroke-width="1.2"/>
+<text x="1280" y="592" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Horarios</text>
+<rect x="1706" y="576" width="32" height="22" rx="11" fill="#7a3fb5"/>
+<text x="1722.0" y="592" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F3</text>
+<text x="1280" y="614" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">horarios · horario_dias · empleado_horarios (con historial)</text>
+<text x="1280" y="633" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">dias_festivos (tabla lista, sin datos aún)</text>
+<rect x="1266" y="658" width="480" height="74" rx="12" fill="#fff6f5" stroke="#e3b3af" stroke-width="1.2"/>
+<text x="1280" y="682" font-size="14" font-weight="700" fill="#b3261e" text-anchor="start">Protección en la base</text>
+<rect x="1697" y="666" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1717.5" y="682" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<text x="1280" y="704" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">RLS en todas las tablas · triggers que bloquean editar registros</text>
+<text x="1280" y="723" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">bitacora de cambios de administración (también inmutable)</text>
+<rect x="1250" y="780" width="512" height="100" rx="14" fill="#fff" stroke="#8fb0e8" stroke-width="1.5"/>
+<text x="1266" y="808" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Storage · bucket privado «selfies»</text>
+<text x="1266" y="832" font-size="13" font-weight="400" fill="#5a6480" text-anchor="start">Guarda la foto de cada registro (nunca pública)</text>
+<text x="1266" y="852" font-size="13" font-weight="400" fill="#5a6480" text-anchor="start">El panel la pide con su sesión: URL firmada de 5 minutos</text>
+<rect x="1709" y="790" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="1729.5" y="806" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<rect x="1250" y="900" width="512" height="70" rx="14" fill="#fff" stroke="#8fb0e8" stroke-width="1.5"/>
+<text x="1266" y="928" font-size="14" font-weight="700" fill="#17275a" text-anchor="start">Migraciones SQL (se aplican a mano en el SQL Editor)</text>
+<text x="1266" y="952" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">5 archivos en supabase/migrations/</text>
+<path d="M330,190 L382,190" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="330.0" y="156" width="52.0" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="356" y="172" font-size="12.5" font-weight="600" fill="#1a7f4b" text-anchor="middle">envía</text>
+<circle cx="330" cy="190" r="13" fill="#1a7f4b"/>
+<text x="330" y="195" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+<path d="M832,190 L902,190" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="844.6" y="156" width="44.8" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="867" y="172" font-size="12.5" font-weight="600" fill="#1a7f4b" text-anchor="middle">POST</text>
+<circle cx="832" cy="190" r="13" fill="#1a7f4b"/>
+<text x="832" y="195" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+<path d="M1196,238 L1266,238" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="1201.4" y="204" width="59.2" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="1231" y="220" font-size="12.5" font-weight="600" fill="#1a7f4b" text-anchor="middle">guarda</text>
+<circle cx="1196" cy="238" r="13" fill="#1a7f4b"/>
+<text x="1196" y="243" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+<path d="M1196,266 L1230,266 L1230,830 L1250,830" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="1200.4" y="588" width="59.2" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="1230" y="604" font-size="12.5" font-weight="600" fill="#1a7f4b" text-anchor="middle">selfie</text>
+<circle cx="1196" cy="266" r="13" fill="#1a7f4b"/>
+<text x="1196" y="271" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+<path d="M902,272 L870,272 L870,258 L832,258" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<rect x="826.6" y="214" width="80.8" height="22" rx="11" fill="#fff" stroke="#1a7f4b" stroke-width="1.2"/>
+<text x="867" y="230" font-size="12.5" font-weight="600" fill="#1a7f4b" text-anchor="middle">respuesta</text>
+<circle cx="902" cy="272" r="13" fill="#1a7f4b"/>
+<text x="902" y="277" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+<path d="M382,258 L330,258" fill="none" stroke="#1a7f4b" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-1a7f4b)"/>
+<path d="M330,880 L382,880" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)"/>
+<rect x="333.6" y="846" width="44.8" height="22" rx="11" fill="#fff" stroke="#2457c5" stroke-width="1.2"/>
+<text x="356" y="862" font-size="12.5" font-weight="600" fill="#2457c5" text-anchor="middle">abre</text>
+<circle cx="330" cy="880" r="13" fill="#2457c5"/>
+<text x="330" y="885" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">6</text>
+<path d="M330,636 L888,636" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)"/>
+<rect x="534.8" y="602" width="210.4" height="22" rx="11" fill="#fff" stroke="#2457c5" stroke-width="1.2"/>
+<text x="640" y="618" font-size="12.5" font-weight="600" fill="#2457c5" text-anchor="middle">login · correo y contraseña</text>
+<circle cx="330" cy="636" r="13" fill="#2457c5"/>
+<text x="330" y="641" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">7</text>
+<path d="M330,730 L888,730" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)"/>
+<rect x="480.79999999999995" y="696" width="318.40000000000003" height="22" rx="11" fill="#fff" stroke="#2457c5" stroke-width="1.2"/>
+<text x="640" y="712" font-size="12.5" font-weight="600" fill="#2457c5" text-anchor="middle">consultas con JWT (Hoy, Equipo, Reportes…)</text>
+<circle cx="330" cy="730" r="13" fill="#2457c5"/>
+<text x="330" y="735" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">8</text>
+<path d="M1210,730 L1250,730" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)"/>
+<path d="M330,826 L1250,826" fill="none" stroke="#2457c5" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-2457c5)"/>
+<rect x="472.8" y="792" width="174.4" height="22" rx="11" fill="#fff" stroke="#2457c5" stroke-width="1.2"/>
+<text x="560" y="808" font-size="12.5" font-weight="600" fill="#2457c5" text-anchor="middle">selfie con URL firmada</text>
+<circle cx="330" cy="826" r="13" fill="#2457c5"/>
+<text x="330" y="831" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">9</text>
+<path d="M330,492 L888,492" fill="none" stroke="#c25b00" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-c25b00)"/>
+<rect x="462.79999999999995" y="464" width="354.40000000000003" height="22" rx="11" fill="#fff" stroke="#c25b00" stroke-width="1.2"/>
+<text x="640" y="480" font-size="12.5" font-weight="600" fill="#c25b00" text-anchor="middle">invitar · alta de usuarios · empresas (con JWT)</text>
+<circle cx="330" cy="492" r="13" fill="#c25b00"/>
+<text x="330" y="497" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">10</text>
+<path d="M1049,536 L1049,580" fill="none" stroke="#c25b00" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-c25b00)"/>
+<rect x="1048.8" y="546" width="102.4" height="22" rx="11" fill="#fff" stroke="#c25b00" stroke-width="1.2"/>
+<text x="1100" y="562" font-size="12.5" font-weight="600" fill="#c25b00" text-anchor="middle">crea usuario</text>
+<path d="M1210,330 L1250,330" fill="none" stroke="#c25b00" stroke-width="3" stroke-linejoin="round" marker-end="url(#f-c25b00)"/>
+<path d="M902,316 L790,316 L790,292" fill="none" stroke="#c25b00" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-c25b00)"/>
+<rect x="776.8" y="304" width="138.4" height="22" rx="11" fill="#fff" stroke="#c25b00" stroke-width="1.2"/>
+<text x="846" y="320" font-size="12.5" font-weight="600" fill="#c25b00" text-anchor="middle">plantilla de alta</text>
+<path d="M888,522 L330,522" fill="none" stroke="#c25b00" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-c25b00)"/>
+<rect x="524.0" y="532" width="232.0" height="22" rx="11" fill="#fff" stroke="#c25b00" stroke-width="1.2"/>
+<text x="640" y="548" font-size="12.5" font-weight="600" fill="#c25b00" text-anchor="middle">devuelve código y enlace wa.me</text>
+<rect x="20" y="1000" width="1760" height="190" rx="18" fill="#f6f2fc" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="36" y="1026" font-size="13" font-weight="800" fill="#4c2a8a" text-anchor="start">DESARROLLO Y DESPLIEGUE</text>
+<rect x="40" y="1044" width="290" height="126" rx="14" fill="#fff" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="56" y="1072" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">Tú + Claude Code</text>
+<text x="56" y="1096" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Código, pruebas y documentos</text>
+<text x="56" y="1116" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Rama de trabajo → git push</text>
+<text x="56" y="1136" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">A producción solo por main</text>
+<rect x="382" y="1044" width="230" height="126" rx="14" fill="#fff" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="398" y="1072" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">GitHub · main</text>
+<text x="398" y="1096" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">baroxio/RelojChecador</text>
+<text x="398" y="1116" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Código, docs/, migraciones</text>
+<text x="398" y="1136" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">y pruebas</text>
+<rect x="642" y="1044" width="190" height="126" rx="14" fill="#fff" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="658" y="1072" font-size="17" font-weight="700" fill="#17275a" text-anchor="start">GitHub Actions</text>
+<text x="658" y="1096" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">node --test</text>
+<text x="658" y="1116" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">Despliega las</text>
+<text x="658" y="1136" font-size="14" font-weight="400" fill="#5a6480" text-anchor="start">funciones</text>
+<path d="M330,1107 L382,1107" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<rect x="333.6" y="1073" width="44.8" height="22" rx="11" fill="#fff" stroke="#6b3fb5" stroke-width="1.2"/>
+<text x="356" y="1089" font-size="12.5" font-weight="600" fill="#6b3fb5" text-anchor="middle">push</text>
+<path d="M612,1107 L642,1107" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<path d="M497,1044 L497,948" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<rect x="442.2" y="988" width="109.60000000000001" height="22" rx="11" fill="#fff" stroke="#6b3fb5" stroke-width="1.2"/>
+<text x="497" y="1004" font-size="12.5" font-weight="600" fill="#6b3fb5" text-anchor="middle">publica docs/</text>
+<circle cx="497" cy="1044" r="13" fill="#6b3fb5"/>
+<text x="497" y="1049" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">11</text>
+<path d="M737,1044 L737,1012 L858,1012 L858,540 L888,540" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<rect x="781.6" y="548" width="152.8" height="22" rx="11" fill="#fff" stroke="#6b3fb5" stroke-width="1.2"/>
+<text x="858" y="564" font-size="12.5" font-weight="600" fill="#6b3fb5" text-anchor="middle">despliega funciones</text>
+<circle cx="737" cy="1044" r="13" fill="#6b3fb5"/>
+<text x="737" y="1049" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">12</text>
+<path d="M1762,935 L1771,935 L1771,440 L1762,440" fill="none" stroke="#6b3fb5" stroke-width="3" stroke-dasharray="7 5" stroke-linejoin="round" marker-end="url(#f-6b3fb5)"/>
+<circle cx="1762" cy="935" r="13" fill="#6b3fb5"/>
+<text x="1762" y="940" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">13</text>
+<rect x="880" y="1044" width="420" height="126" rx="14" fill="#fff" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="896" y="1072" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">Secretos (nunca en el repositorio)</text>
+<text x="896" y="1096" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Secreto de la app y tokens de Meta → secretos de las funciones</text>
+<text x="896" y="1116" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Llave service_role → solo dentro de las funciones</text>
+<text x="896" y="1136" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Token de despliegue → secreto de GitHub Actions</text>
+<text x="896" y="1156" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">En el panel solo va la llave publicable (protegida por RLS)</text>
+<rect x="1330" y="1044" width="430" height="126" rx="14" fill="#fff" stroke="#d3c4ee" stroke-width="1.5"/>
+<text x="1346" y="1072" font-size="15" font-weight="700" fill="#17275a" text-anchor="start">Pruebas automáticas</text>
+<text x="1346" y="1096" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Lógica del panel: 25 · interfaz del panel: 16</text>
+<text x="1346" y="1116" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Funciones: firma de Meta, invitaciones, permisos, administrar</text>
+<text x="1346" y="1136" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Base: 20 verificaciones (inmutabilidad, RLS, geocerca…)</text>
+<text x="1346" y="1156" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Se corren antes de desplegar</text>
+<rect x="20" y="1206" width="1760" height="130" rx="18" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
+<text x="36" y="1232" font-size="13" font-weight="800" fill="#46527a" text-anchor="start">QUÉ TRAE CADA FASE</text>
+<rect x="36" y="1244" width="41" height="22" rx="11" fill="#17275a"/>
+<text x="56.5" y="1260" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">MVP</text>
+<text x="85" y="1261" font-size="14.5" font-weight="700" fill="#17275a" text-anchor="start">Núcleo</text>
+<text x="36" y="1286" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Registro por WhatsApp con ubicación</text>
+<text x="36" y="1303" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">y selfie · registros inmutables</text>
+<text x="36" y="1320" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Panel: Hoy, Equipo, Correcciones</text>
+<rect x="324" y="1244" width="32" height="22" rx="11" fill="#0b7a75"/>
+<text x="340.0" y="1260" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F1</text>
+<text x="364" y="1261" font-size="14.5" font-weight="700" fill="#17275a" text-anchor="start">App instalable</text>
+<text x="324" y="1286" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">PWA para Android · abre sin</text>
+<text x="324" y="1303" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">internet · se actualiza sola</text>
+<text x="324" y="1320" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Cuenta y ayuda</text>
+<rect x="612" y="1244" width="32" height="22" rx="11" fill="#c25b00"/>
+<text x="628.0" y="1260" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F2</text>
+<text x="652" y="1261" font-size="14.5" font-weight="700" fill="#17275a" text-anchor="start">Usuarios y roles</text>
+<text x="612" y="1286" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Dueño, admin, supervisor, consulta</text>
+<text x="612" y="1303" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Varias empresas · contraseña</text>
+<text x="612" y="1320" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">temporal de un solo uso</text>
+<rect x="900" y="1244" width="32" height="22" rx="11" fill="#7a3fb5"/>
+<text x="916.0" y="1260" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F3</text>
+<text x="940" y="1261" font-size="14.5" font-weight="700" fill="#17275a" text-anchor="start">Sedes y horarios</text>
+<text x="900" y="1286" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Geocercas con radio · horarios</text>
+<text x="900" y="1303" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">por empleado con historial</text>
+<text x="900" y="1320" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">(tolerancias y pausas)</text>
+<rect x="1188" y="1244" width="32" height="22" rx="11" fill="#1a7f4b"/>
+<text x="1204.0" y="1260" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F4</text>
+<text x="1228" y="1261" font-size="14.5" font-weight="700" fill="#17275a" text-anchor="start">Sin internet y avisos</text>
+<text x="1188" y="1286" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">«entrada 8:55» → registro con señal</text>
+<text x="1188" y="1303" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">y corrección pendiente · aviso de</text>
+<text x="1188" y="1320" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">alta con plantilla de Meta</text>
+<rect x="1476" y="1244" width="32" height="22" rx="11" fill="#b3261e"/>
+<text x="1492.0" y="1260" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">F5</text>
+<text x="1516" y="1261" font-size="14.5" font-weight="700" fill="#17275a" text-anchor="start">Reportes</text>
+<text x="1476" y="1286" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Asistencia por periodo: faltas,</text>
+<text x="1476" y="1303" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">retardos y horas · detalle por día</text>
+<text x="1476" y="1320" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">Exporta a CSV (PDF y STPS: pendiente)</text>
+</svg>

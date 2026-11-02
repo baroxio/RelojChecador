@@ -1,7 +1,7 @@
 // Vista de ejemplo del panel con DATOS FICTICIOS y sin conexión a ninguna base de datos.
 // Sirve para ver y revisar el diseño. Nada de lo que se hace aquí se guarda.
 import { iniciarApp } from "./ui.js";
-import { aUTCdesdeLocal, fechaLocal } from "./logic.js";
+import { aUTCdesdeLocal, fechaLocal, sumarDias } from "./logic.js";
 
 const TZ = "America/Mexico_City";
 const ahora = new Date();
@@ -44,6 +44,28 @@ const datos = {
   ],
 };
 
+
+// Historial de los días anteriores, para que Reportes tenga qué mostrar.
+// Cada patrón es [entrada, salida] por día hacia atrás; null = no fue (falta).
+const PATRONES = {
+  e1: [["08:55", "18:02"], ["09:22", "18:10"], null, ["08:58", "18:00"], ["08:50", "17:58"], ["09:00", "18:05"]],
+  e2: [["08:45", "18:00"], ["08:52", "18:03"], ["08:49", "18:01"], ["08:57", "18:00"], ["08:51", "13:00"], ["08:48", "18:02"]],
+  e3: [["09:05", "18:00"], null, null, ["09:01", "18:07"], ["09:18", "18:00"], ["08:59", "18:00"]],
+  e4: [["08:40", "18:00"], ["08:42", "18:01"], ["08:39", "18:00"], ["08:44", "18:00"], ["08:43", "18:02"], ["08:41", "18:00"]],
+  e5: [["09:03", "18:00"], ["09:00", "18:00"], ["09:02", "18:04"], ["09:04", "18:00"], ["09:01", "18:00"], ["08:58", "18:00"]],
+};
+let contador = 100;
+for (const [emp, dias] of Object.entries(PATRONES)) {
+  dias.forEach((dia, i) => {
+    if (!dia) return;
+    const fecha = sumarDias(hoy, -(i + 1));
+    for (const [tipo, hhmm] of [["entrada", dia[0]], ["salida", dia[1]]]) {
+      const t = aUTCdesdeLocal(fecha, hhmm, TZ).toISOString();
+      datos.registros_efectivos.push({ origen: "registro", fuente_id: `h${contador++}`, empleado_id: emp, sede_id: "s1", tipo, hora_efectiva: t, hora_original: t, canal: "whatsapp", senales: [], medio_id: null, corregido: false });
+    }
+  });
+}
+
 // Las consultas del panel filtran por la empresa activa.
 for (const t of ["sedes", "empleados", "registros_efectivos", "horarios", "empleado_horarios", "correcciones"]) {
   for (const fila of datos[t]) fila.empresa_id = "emp";
@@ -57,17 +79,18 @@ datos.usuarios = [
 ];
 
 function tabla(nombre) {
-  const filtros = []; let cabeza = false; let modo = "select";
+  const filtros = []; let cabeza = false; let modo = "select"; let rango = null;
   const b = {
     select(_c, o) { if (o?.head) cabeza = true; return b; },
     eq(c, v) { filtros.push((r) => r[c] === v); return b; },
     neq(c, v) { filtros.push((r) => r[c] !== v); return b; },
-    gte() { return b; }, order() { return b; }, limit() { return b; },
+    gte() { return b; }, lt() { return b; }, range(a2, z) { rango = [a2, z]; return b; }, order() { return b; }, limit() { return b; },
     in(c, vs) { filtros.push((r) => vs.includes(r[c])); return b; },
     insert() { modo = "escritura"; return b; }, update() { modo = "escritura"; return b; },
     then(ok, mal) { return Promise.resolve().then(() => {
       if (modo === "escritura") return { data: null, error: null };
       const filas = (datos[nombre] ?? []).filter((r) => filtros.every((f) => f(r)));
+      if (rango) return { data: filas.slice(rango[0], rango[1] + 1), error: null };
       return cabeza ? { data: null, count: filas.length, error: null } : { data: filas, error: null };
     }).then(ok, mal); },
   };

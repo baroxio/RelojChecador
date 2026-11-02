@@ -5,6 +5,7 @@ import {
   enlaceMensajeEmpleado, etiquetaSenal, fechaLocal, formatearDistancia, formatearDuracion,
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
+  PERIODOS, ETIQUETA_ESTADO_DIA, ENCABEZADOS_CSV_RESUMEN, ENCABEZADOS_CSV_DETALLE, aCSV, errorDePeriodo, filasCSVDetalle, filasCSVResumen, formatearHoras, periodoPredefinido, reporteAsistencia, sumarDias, totalesGenerales,
   NOMBRES_DIA, ZONAS_HORARIAS_MX, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
 } from "./logic.js";
 
@@ -15,6 +16,7 @@ const ICONOS = {
   hoy: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   equipo: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.6c2.4.2 4 1.9 4 4.4"/>'),
   correcciones: SVG('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/>'),
+  reportes: SVG('<path d="M5 20V10M12 20V4M19 20v-7"/>'),
   mas: SVG('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', true),
   agregar: SVG('<path d="M12 5v14M5 12h14"/>'),
   copiar: SVG('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>'),
@@ -241,7 +243,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
 
   function construirEstructura() {
     const enlaces = [];
-    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["correcciones", "Correcciones", "#/correcciones"]);
+    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["correcciones", "Correcciones", "#/correcciones"], ["reportes", "Reportes", "#/reportes"]);
     if (puedeAdministrar() || estado.plataforma) enlaces.push(["administrar", "Administrar", "#/administrar"]);
     enlaces.push(["usuario", "Cuenta", "#/cuenta"]);
     const nav = h("nav", { class: "nav", "aria-label": "Principal" }, enlaces.map(([id, texto, href]) =>
@@ -291,7 +293,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Rutas ----------
-  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, reportes: vistaReportes, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
 
   function rutear() {
     clearInterval(temporizador);
@@ -311,6 +313,177 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     document.title = `${nombre[0].toUpperCase()}${nombre.slice(1)} | RelojChecador`;
     RUTAS[nombre](cont, { vigente: () => estado.ruta === miRuta, parametros });
     window.scrollTo?.(0, 0);
+  }
+
+  // ---------- Reportes ----------
+  async function todasLasFilas(construir) {
+    // Supabase entrega como máximo 1000 filas por consulta: se pide por páginas.
+    const TAM = 1000;
+    const filas = [];
+    for (let i = 0; ; i += TAM) {
+      const pagina = await q(construir().range(i, i + TAM - 1));
+      filas.push(...pagina);
+      if (pagina.length < TAM) return filas;
+    }
+  }
+
+  function descargarArchivo(nombre, contenido, tipo) {
+    const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
+    const a = h("a", { href: url, download: nombre });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  const fechaDeReporte = (fecha) =>
+    new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${fecha}T12:00:00Z`)).replace(".", "");
+
+  const CHIP_ESTADO = { asistio: "chip--ok", retardo: "chip--aviso", falta: "chip--rojo", incompleto: "chip--aviso", descanso_trabajado: "chip--ok" };
+
+  async function vistaReportes(cont, ctx) {
+    const tzBase = estado.sedes[0]?.zona_horaria ?? "America/Mexico_City";
+    const hoy = fechaLocal(new Date(), tzBase);
+    estado.reporte ??= { periodo: "semana", ...periodoPredefinido("semana", hoy) };
+    const sel = estado.reporte;
+
+    const periodo = h("select", { class: "entrada", id: "rep-periodo", onchange: (e) => {
+      sel.periodo = e.target.value;
+      const p = periodoPredefinido(sel.periodo, hoy);
+      if (p) { sel.desde = p.desde; sel.hasta = p.hasta; }
+      pintarControles();
+      cargar();
+    } }, PERIODOS.map(([v, t]) => h("option", { value: v, selected: sel.periodo === v }, t)));
+    const desde = h("input", { class: "entrada", type: "date", id: "rep-desde", max: hoy, onchange: (e) => { sel.desde = e.target.value; cargar(); } });
+    const hasta = h("input", { class: "entrada", type: "date", id: "rep-hasta", max: hoy, onchange: (e) => { sel.hasta = e.target.value; cargar(); } });
+    const fechas = h("div", { class: "cuadricula cuadricula--dos", hidden: true },
+      h("div", { class: "campo" }, h("label", { for: "rep-desde" }, "Desde"), desde),
+      h("div", { class: "campo" }, h("label", { for: "rep-hasta" }, "Hasta"), hasta));
+    const sede = estado.sedes.length > 1
+      ? h("select", { class: "entrada", "aria-label": "Sede", onchange: (e) => { estado.sedeFiltro = e.target.value; cargar(); } },
+          h("option", { value: "todas" }, "Todas las sedes"),
+          estado.sedes.map((s) => h("option", { value: s.id, selected: estado.sedeFiltro === s.id }, s.nombre)))
+      : null;
+    const zona = h("div", {});
+    function pintarControles() {
+      fechas.hidden = sel.periodo !== "personalizado";
+      desde.value = sel.desde ?? ""; hasta.value = sel.hasta ?? "";
+    }
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Reportes"), h("p", {}, "Asistencia, retardos, faltas y horas por periodo"))),
+      h("div", { class: "formulario filtros" },
+        h("div", { class: "campo" }, h("label", { for: "rep-periodo" }, "Periodo"), periodo),
+        fechas, sede),
+      zona);
+    pintarControles();
+
+    let reporte = null;
+    async function cargar() {
+      const problema = errorDePeriodo(sel.desde, sel.hasta);
+      if (problema) { zona.replaceChildren(h("div", { class: "aviso-bloque aviso-bloque--error", role: "alert" }, problema)); return; }
+      zona.replaceChildren(esqueletos(5));
+      try {
+        // Margen de un día por lado: una jornada nocturna o la diferencia de zona horaria puede cruzar la medianoche.
+        const desdeUTC = aUTCdesdeLocal(sumarDias(sel.desde, -1), "00:00", tzBase).toISOString();
+        const hastaUTC = aUTCdesdeLocal(sumarDias(sel.hasta, 2), "00:00", tzBase).toISOString();
+        const [empleados, registros, horarios, horarioDias, empleadoHorarios] = await Promise.all([
+          q(sb.from("empleados").select("id,nombre,estado,sede_id,num_empleado,fecha_ingreso,fecha_baja,creado_at").eq("empresa_id", eid()).order("nombre")),
+          todasLasFilas(() => sb.from("registros_efectivos")
+            .select("origen,fuente_id,empleado_id,sede_id,tipo,hora_efectiva,senales,corregido")
+            .eq("empresa_id", eid()).gte("hora_efectiva", desdeUTC).lt("hora_efectiva", hastaUTC)
+            .order("hora_efectiva").order("fuente_id")),
+          q(sb.from("horarios").select("id,tolerancia_retardo_min").eq("empresa_id", eid())),
+          q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada")),
+          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia").eq("empresa_id", eid())),
+        ]);
+        if (!ctx.vigente()) return;
+        const filtrados = empleados.filter((e) => estado.sedeFiltro === "todas" || e.sede_id === estado.sedeFiltro);
+        reporte = reporteAsistencia({
+          empleados: filtrados, registros, desde: sel.desde, hasta: sel.hasta, ahora: new Date(),
+          tzPorSede: tzPorSede(), datos: { horarios, horarioDias, empleadoHorarios },
+        });
+        mostrar();
+      } catch (err) {
+        if (ctx.vigente()) zona.replaceChildren(bloqueError(err, cargar));
+      }
+    }
+
+    function exportar(cual) {
+      const sufijo = `${sel.desde}_a_${sel.hasta}`;
+      const empresa = (estado.empresa?.nombre ?? "empresa").normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+      if (cual === "resumen") descargarArchivo(`asistencia_${empresa}_${sufijo}.csv`, aCSV(ENCABEZADOS_CSV_RESUMEN, filasCSVResumen(reporte, nombreSede)), "text/csv;charset=utf-8");
+      else descargarArchivo(`asistencia_detalle_${empresa}_${sufijo}.csv`, aCSV(ENCABEZADOS_CSV_DETALLE, filasCSVDetalle(reporte, nombreSede)), "text/csv;charset=utf-8");
+    }
+
+    function metrica(valor, texto, alerta = false) {
+      return h("div", { class: `metrica${alerta && valor ? " metrica--alerta" : ""}` }, h("div", { class: "metrica__valor" }, String(valor)), h("div", { class: "metrica__texto" }, texto));
+    }
+
+    function mostrar() {
+      if (!reporte.filas.length) {
+        zona.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "No hay empleados para este periodo"),
+          h("p", {}, "Cuando haya empleados activos o registros en estas fechas, el reporte aparece aquí.")));
+        return;
+      }
+      const t = totalesGenerales(reporte.filas);
+      const incompletoHoy = reporte.fechas.includes(hoy) || sel.hasta >= hoy;
+      // replaceChildren convierte lo que no es un nodo en texto ("false"): solo se pasan nodos.
+      zona.replaceChildren(...[
+        h("div", { class: "metricas" },
+          metrica(t.empleados, "Empleados"), metrica(t.faltas, "Faltas", true), metrica(t.retardos, "Retardos", true),
+          metrica(formatearHoras(t.minutos), "Horas trabajadas")),
+        t.sinSalida > 0 && h("div", { class: "aviso-bloque", style: "margin-bottom:.75rem" },
+          `${t.sinSalida} ${t.sinSalida === 1 ? "día quedó" : "días quedaron"} sin salida registrada: sus horas no se suman hasta que se corrija.`),
+        h("div", { class: "cabecera__acciones", style: "margin-bottom:.75rem; flex-wrap:wrap" },
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => exportar("resumen") }, "Descargar resumen (CSV)"),
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => exportar("detalle") }, "Descargar detalle por día (CSV)")),
+        h("ul", { class: "lista" }, reporte.filas.map(filaReporte)),
+        h("p", { class: "nota", style: "margin-top:.75rem" },
+          `Del ${fechaDeReporte(sel.desde)} al ${fechaDeReporte(sel.hasta)}. Las horas descuentan las pausas y usan las correcciones aprobadas. ` +
+          (incompletoHoy ? "El día de hoy cuenta como falta una hora después de la entrada esperada. " : "") +
+          "Sin horario asignado no se pueden calcular faltas ni retardos."),
+      ].filter(Boolean));
+    }
+
+    function filaReporte(f) {
+      const detalle = h("div", { class: "detalle", hidden: true });
+      const id = `rep-${f.empleado.id}`;
+      detalle.id = id;
+      let pintado = false;
+      const boton = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": id, onclick: () => {
+        const abierto = boton.getAttribute("aria-expanded") === "true";
+        boton.setAttribute("aria-expanded", String(!abierto));
+        detalle.hidden = abierto;
+        if (!abierto && !pintado) { pintado = true; detalle.replaceChildren(tablaDias(f)); }
+      } },
+        h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(f.empleado.nombre)),
+        h("span", { style: "min-width:0" },
+          h("div", { class: "fila__nombre" }, f.empleado.nombre),
+          h("div", { class: "fila__sub" }, [nombreSede(f.empleado.sede_id), `${f.totales.asistencias} ${f.totales.asistencias === 1 ? "asistencia" : "asistencias"}`, formatearHoras(f.totales.minutos)].filter(Boolean).join(" · "))),
+        h("span", { class: "fila__fin" },
+          f.totales.faltas > 0 && h("span", { class: "chip chip--rojo" }, `${f.totales.faltas} ${f.totales.faltas === 1 ? "falta" : "faltas"}`),
+          f.totales.retardos > 0 && h("span", { class: "chip chip--aviso" }, `${f.totales.retardos} ${f.totales.retardos === 1 ? "retardo" : "retardos"}`),
+          f.totales.sinSalida > 0 && h("span", { class: "chip chip--aviso" }, "Sin salida")),
+        h("span", { class: "fila__flecha" }, icono("flecha")));
+      return h("li", {}, boton, detalle);
+    }
+
+    function tablaDias(f) {
+      const visibles = f.dias.filter((d) => d.estado !== "pendiente");
+      return h("div", { class: "tabla-envoltura" }, h("table", { class: "tabla" },
+        h("thead", {}, h("tr", {}, ["Día", "Estado", "Entrada", "Salida", "Horas"].map((c) => h("th", { scope: "col" }, c)))),
+        h("tbody", {}, visibles.map((d) => h("tr", {},
+          h("th", { scope: "row" }, fechaDeReporte(d.fecha)),
+          h("td", {}, h("span", { class: `chip ${CHIP_ESTADO[d.estado] ?? "chip--baja"}` }, ETIQUETA_ESTADO_DIA[d.estado] ?? d.estado),
+            d.retardoMin > 0 && h("span", { class: "retardo" }, ` ${formatearDuracion(d.retardoMin)}`),
+            d.corregido && h("span", { class: "nota" }, " · corregido"),
+            d.senales.length > 0 && h("span", { class: "nota" }, ` · ${d.senales.length} ${d.senales.length === 1 ? "señal" : "señales"}`)),
+          h("td", {}, d.entrada ?? "—"), h("td", {}, d.salida ?? "—"),
+          h("td", {}, d.minutos ? formatearHoras(d.minutos) : "—"))))));
+    }
+
+    await cargar();
   }
 
   // ---------- Hoy ----------
