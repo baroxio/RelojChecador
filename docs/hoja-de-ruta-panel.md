@@ -69,6 +69,14 @@ Pantalla **Reportes** en el menú, para todos los roles (el supervisor ve solo s
 - **Exportar a CSV** (abre en Excel con acentos): resumen por empleado y detalle por día. Las celdas que empiezan con `=`, `+`, `-` o `@` se protegen contra fórmulas.
 - Pendiente de reportes: PDF, reporte para inspección STPS (registros con sello y traza de correcciones), horas extra, salida anticipada, días festivos, prenómina y exportación para sistemas de nómina.
 
+## Fase 6: respaldo diario al NAS (construido; falta instalarlo en el NAS)
+Hasta ahora Supabase era el único lugar de los datos (la API no lista respaldos y no hay recuperación a un punto en el tiempo). Guía paso a paso en [`docs/respaldos.md`](respaldos.md); código en `respaldo/`.
+- Cada día, desde el Programador de tareas del NAS (con Container Manager): `pg_dump` de los esquemas `public` y `private`, los datos de los usuarios del panel (`auth.users` y `auth.identities`) y la sincronización del bucket de selfies por S3. Todo en contenedores: el NAS no instala nada.
+- Verifica cada archivo antes de darlo por bueno, no deja un respaldo falso si algo falla y termina con error para que DSM avise por correo. Conserva 30 días y el del día 1 de cada mes durante 12 meses. Nunca borra selfies ya respaldadas.
+- Usuario de **solo lectura** en Supabase (`respaldo/crear_usuario_respaldo.sql`); la contraseña vive solo en `respaldo.env` del NAS (no en el repositorio, que es público).
+- Probado con un PostgreSQL 16 real y un `docker` simulado (`bash tests/respaldo/prueba.sh`, 29 comprobaciones), incluida la **restauración en una base vacía con los mismos datos**. **Sin probar:** Docker real, el NAS, el Session pooler con el usuario `respaldo` y la sincronización S3 con llaves reales: la primera corrida a mano es obligatoria.
+- Pendiente: instalarlo, ensayar una restauración contra un proyecto de Supabase de prueba, y una segunda copia fuera del NAS (Hyper Backup).
+
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
 2. ~~Registro sin internet~~ Resuelto por defecto: cuenta como registro con señal y corrección pendiente (ver Fase 4). Se puede cambiar si prefieres que solo quede como aviso.

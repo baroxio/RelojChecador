@@ -34,17 +34,20 @@
 <text x="50" y="316" font-size="14" font-weight="700" fill="#8a5a00" text-anchor="start">Cómo leer este mapa</text>
 <rect x="50" y="334" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
 <text x="79.9" y="349" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">EN USO</text>
-<rect x="50" y="362" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
-<text x="87.2" y="377" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
-<rect x="50" y="390" width="81.7" height="21" rx="10.5" fill="#b3261e"/>
-<text x="90.85" y="405" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PENDIENTE</text>
+<rect x="50" y="362" width="96.3" height="21" rx="10.5" fill="#c25b00"/>
+<text x="98.15" y="377" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">POR APLICAR</text>
+<rect x="50" y="390" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
+<text x="87.2" y="405" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
+<rect x="50" y="418" width="81.7" height="21" rx="10.5" fill="#b3261e"/>
+<text x="90.85" y="433" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PENDIENTE</text>
 <text x="154" y="349" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
 <text x="154" y="377" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
 <text x="154" y="405" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
 <text x="154" y="433" font-size="1" font-weight="400" fill="#17275a" text-anchor="start"></text>
 <text x="158" y="349" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">funciona hoy</text>
-<text x="158" y="377" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">diseñado, no hecho</text>
-<text x="158" y="405" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">trámite externo</text>
+<text x="158" y="377" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">listo, falta instalarlo</text>
+<text x="158" y="405" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">diseñado, no hecho</text>
+<text x="158" y="433" font-size="12" font-weight="400" fill="#5a6480" text-anchor="start">trámite externo</text>
 <rect x="36" y="480" width="258" height="210" rx="14" fill="#fffdf8" stroke="#e0c88f" stroke-width="1.5"/>
 <text x="50" y="506" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">Dueño y su equipo</text>
 <rect x="224.2" y="489" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
@@ -66,14 +69,14 @@
 <text x="50" y="814" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">en el SQL Editor de Supabase</text>
 <rect x="36" y="880" width="258" height="160" rx="14" fill="#fff" stroke="#cfd5e6" stroke-width="1.5"/>
 <text x="50" y="906" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">NAS Synology</text>
-<rect x="209.6" y="889" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
-<text x="246.8" y="904" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
-<text x="50" y="930" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Hoy: sin Docker ni Deno</text>
-<text x="50" y="948" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">accesibles, no corre nada del</text>
-<text x="50" y="966" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">sistema</text>
-<text x="50" y="984" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Plan: respaldo diario (pg_dump</text>
-<text x="50" y="1002" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">+ Hyper Backup); réplica lógica</text>
-<text x="50" y="1020" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">después, cuando haya clientes</text>
+<rect x="187.7" y="889" width="96.3" height="21" rx="10.5" fill="#c25b00"/>
+<text x="235.85" y="904" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">POR APLICAR</text>
+<text x="50" y="930" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Con Container Manager (Docker)</text>
+<text x="50" y="948" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Respaldo diario: script listo</text>
+<text x="50" y="966" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">(pg_dump + selfies en contenedores)</text>
+<text x="50" y="984" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Falta instalarlo en el NAS</text>
+<text x="50" y="1002" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Después: Hyper Backup a otro</text>
+<text x="50" y="1020" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">lugar y réplica lógica</text>
 <rect x="356" y="144" width="388" height="86" rx="14" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
 <text x="370" y="170" font-size="16" font-weight="700" fill="#17275a" text-anchor="start">App de Meta (publicada)</text>
 <rect x="674.2" y="153" width="59.8" height="21" rx="10.5" fill="#1a7f4b"/>
@@ -188,11 +191,11 @@
 <text x="1318" y="668" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Se cargan con supabase secrets set o en el panel</text>
 <rect x="836" y="728" width="452" height="190" rx="14" fill="#fff" stroke="#9fd0b6" stroke-width="1.5"/>
 <text x="850" y="754" font-size="15.5" font-weight="700" fill="#17275a" text-anchor="start">Respaldos y vigilancia</text>
-<rect x="1203.6" y="737" width="74.4" height="21" rx="10.5" fill="#6b7599"/>
-<text x="1240.8" y="752" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">PLANEADO</text>
+<rect x="1181.7" y="737" width="96.3" height="21" rx="10.5" fill="#c25b00"/>
+<text x="1229.8500000000001" y="752" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle">POR APLICAR</text>
 <text x="850" y="778" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Respaldos del proveedor: la API no lista ninguno</text>
 <text x="850" y="796" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   y no hay recuperación a un punto en el tiempo</text>
-<text x="850" y="814" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Respaldo propio al NAS: diseñado, no hecho</text>
+<text x="850" y="814" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Respaldo diario al NAS: script listo, falta instalarlo</text>
 <text x="850" y="832" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Security Advisors: pendiente de revisar con</text>
 <text x="850" y="850" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">   las tablas nuevas</text>
 <text x="850" y="868" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">Sin monitoreo ni alertas de errores</text>
@@ -231,8 +234,8 @@
 <rect x="626.45" y="993" width="147.1" height="22" rx="11" fill="#fff" stroke="#c25b00" stroke-width="1.2"/>
 <text x="700" y="1009" font-size="12" font-weight="600" fill="#c25b00" text-anchor="middle">SQL Editor (a mano)</text>
 <path d="M165,1040 L165,1065 L1062,1065 L1062,918" fill="none" stroke="#6b7599" stroke-width="2.5" stroke-dasharray="3 6" stroke-linejoin="round" marker-end="url(#f-6b7599)"/>
-<rect x="385.2" y="1053" width="457.6" height="22" rx="11" fill="#fff" stroke="#6b7599" stroke-width="1.2"/>
-<text x="614" y="1069" font-size="12" font-weight="600" fill="#6b7599" text-anchor="middle">respaldo desde el NAS (planeado: el NAS se conecta hacia afuera)</text>
+<rect x="347.25" y="1053" width="533.5" height="22" rx="11" fill="#fff" stroke="#6b7599" stroke-width="1.2"/>
+<text x="614" y="1069" font-size="12" font-weight="600" fill="#6b7599" text-anchor="middle">respaldo diario desde el NAS (script listo; el NAS se conecta hacia afuera)</text>
 <rect x="20" y="1112" width="590" height="206" rx="16" fill="#fff" stroke="#c9d0e0" stroke-width="1.5"/>
 <text x="38" y="1142" font-size="15" font-weight="800" fill="#14633b" text-anchor="start">DÓNDE VIVE CADA SECRETO</text>
 <text x="38" y="1170" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Llave publicable de Supabase → en la app (config.js): es pública, la protege RLS</text>
@@ -254,7 +257,7 @@
 <text x="1238" y="1170" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Dominio propio (hoy: subdominios de GitHub y de Supabase)</text>
 <text x="1238" y="1193" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Ambiente de pruebas separado de producción</text>
 <text x="1238" y="1216" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Monitoreo y alertas de errores</text>
-<text x="1238" y="1239" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Respaldos propios al NAS y réplica</text>
+<text x="1238" y="1239" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Respaldo instalado en el NAS (script listo) y réplica</text>
 <text x="1238" y="1262" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Número de WhatsApp propio por cliente (hoy uno compartido)</text>
 <text x="1238" y="1285" font-size="12.5" font-weight="400" fill="#5a6480" text-anchor="start">• Cobro y facturación</text>
 </svg>
