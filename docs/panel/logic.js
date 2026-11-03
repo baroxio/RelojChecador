@@ -635,3 +635,33 @@ export function filasCSVDetalle(reporte, nombreSede) {
   return filas;
 }
 export const ENCABEZADOS_CSV_DETALLE = ["Fecha", "Núm. empleado", "Empleado", "Sede", "Estado", "Entrada", "Salida", "Minutos de retardo", "Horas trabajadas", "Con corrección", "Señales"];
+
+// --- Edición de empleados --------------------------------------------------
+
+/**
+ * Valida y normaliza el formulario de un empleado.
+ * Devuelve { errores: {nombre?, telefono?, sede?, fecha?}, valores }; sin errores si todo está bien.
+ */
+export function validarDatosEmpleado({ nombre, telefono, sede_id, num_empleado, fecha_ingreso }) {
+  const errores = {};
+  const nom = String(nombre ?? "").trim().replace(/\s+/g, " ");
+  if (nom.length < 2) errores.nombre = "Escribe el nombre del empleado.";
+  const tel = normalizarTelefonoMx(telefono);
+  if (!tel) errores.telefono = "Escribe un celular de 10 dígitos, por ejemplo 33 1234 5678.";
+  if (!sede_id) errores.sede = "Elige la sede.";
+  const num = String(num_empleado ?? "").trim() || null;
+  const ing = String(fecha_ingreso ?? "").trim() || null;
+  if (ing && (!/^\d{4}-\d{2}-\d{2}$/.test(ing) || Number.isNaN(Date.parse(ing)))) errores.fecha = "La fecha de ingreso no es válida.";
+  return { errores, valores: { nombre: nom, telefono: tel, sede_id: sede_id || null, num_empleado: num, fecha_ingreso: ing } };
+}
+
+const CAMPOS_EMPLEADO = ["nombre", "telefono", "sede_id", "num_empleado", "fecha_ingreso"];
+
+/** Solo los campos que cambiaron: lo que se manda a actualizar. Vacío si no hay cambios. */
+export function diferenciasEmpleado(actual, valores) {
+  const diff = {};
+  for (const k of CAMPOS_EMPLEADO) {
+    if ((actual[k] ?? null) !== (valores[k] ?? null)) diff[k] = valores[k] ?? null;
+  }
+  return diff;
+}
