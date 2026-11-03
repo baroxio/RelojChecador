@@ -10,7 +10,7 @@ Lo que el dueño pidió para el panel, separado por fases. **Fase 1 ya está hec
 - [x] Sin internet: la app abre, avisa "Sin conexión" y Hoy muestra lo último cargado, marcado como tal. Los cambios (altas, correcciones) necesitan conexión.
 - Al publicar un cambio hay que **subir `VERSION` en `docs/panel/sw.js`**; si no, los teléfonos no detectan la versión nueva.
 
-## Fase 2: usuarios, roles y empresas (construida; falta aplicarla y probarla en vivo)
+## Fase 2: usuarios, roles y empresas (aplicada y desplegada; falta probarla en vivo)
 Decisión del dueño: **RH es simplemente administrador de su empresa**; no hay un rol nuevo. Los roles siguen siendo dueño, administrador, supervisor y consulta.
 
 Reglas (las aplica el servidor; el panel solo muestra u oculta opciones):
@@ -26,9 +26,9 @@ Piezas:
 - Panel: pantalla **Administrar** (Usuarios y, si aplica, Empresas), cambio de empresa para quien pertenece a varias, y cambio de contraseña en Cuenta.
 - Pruebas: 7 de reglas de permisos y 25 de la función con base simulada, más las de la interfaz.
 
-### Para activarla (pasos del dueño del proyecto)
-1. Correr la migración en el SQL Editor de Supabase.
-2. `git push`: el flujo de GitHub Actions despliega la función `administrar`.
+### Cómo se activó (2026-11-03)
+1. Migración aplicada en el SQL Editor de Supabase y verificada (tabla `plataforma_admins` con RLS y su política, `miembros_de_empresa()` y `usuario_id_por_correo()`).
+2. La función `administrar` se desplegó sola con el `git push` (GitHub Actions, ejecución en verde del 2026-10-19).
 3. **Opcional: ser administrador de la plataforma.** Solo si quieres administrar todas las empresas, corre (con tu correo):
 ```sql
 insert into public.plataforma_admins (user_id)
@@ -44,7 +44,7 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
 - **Equipo > detalle del empleado:** asignar o quitar el horario. El cambio rige desde hoy: la asignación vigente se cierra hoy y queda en el historial (`empleado_horarios.vigencia`).
 - Pendiente: mapa dibujado para ajustar el círculo (se evitó un servicio de mapas externo por privacidad y para que el panel siga funcionando sin dependencias), jornada partida desde la pantalla (la base ya la soporta) y días festivos.
 
-## Fase 4: avisos y registro sin internet (construida, falta migrar, desplegar y probar con celular)
+## Fase 4: avisos y registro sin internet (migrada y desplegada; falta probar con celular y pedir la plantilla)
 **Registro sin internet ("registro diferido").** Límite de fondo: sin internet el empleado no recibe los mensajes del bot, y la hora que Meta entrega es la de **recepción en sus servidores**, no la del celular. Por eso la hora de un registro hecho sin conexión no se puede deducir; la declara el empleado:
 1. Sin internet escribe `entrada 8:55` (o `salida 18:05`, `pausa 14:00`), comparte su ubicación y manda su selfie. WhatsApp los entrega en orden al reconectar.
 2. El bot los procesa como un registro normal: se valida la geocerca con la ubicación enviada y el registro queda con la hora del servidor (los registros no se editan).
