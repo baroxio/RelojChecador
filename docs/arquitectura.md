@@ -18,8 +18,7 @@ Los cuatro recorridos de datos:
 
 Editable: [`img/mapa-infraestructura.svg`](img/mapa-infraestructura.svg). Muestra las cuentas y servicios (equipos de los usuarios, Meta, GitHub y Supabase), las URL y protocolos entre ellos, dónde vive cada secreto y el estado de cada pieza:
 
-- **En uso:** funciona hoy.
-- **Por aplicar:** construido, falta aplicar las migraciones 4 y 5 y desplegar `administrar`.
+- **En uso:** funciona hoy. Las 5 migraciones están aplicadas y las 3 funciones desplegadas (verificado el 2026-11-03); falta probar `administrar` y el registro diferido en vivo.
 - **Planeado:** respaldo y réplica en el NAS.
 - **Pendiente:** la plantilla de Meta para el aviso de alta.
 

@@ -177,6 +177,48 @@ assert.equal(ins[2].telefono, "+528112345678");
 assert.equal(ins[2].empresa_id, "emp");
 console.log("OK Equipo: lista, validación en español, alta con teléfono normalizado");
 
+// 4b. Equipo: editar los datos de un empleado
+const nombreOriginal = datos.empleados.find((e) => e.id === "e2").nombre;
+document.querySelector('button[aria-controls="eq-e2"]').click();
+await esperar(80);
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Editar datos").click();
+await esperar();
+const fEd = document.querySelector("#eq-e2 form");
+assert.ok(fEd, "aparece el formulario de edición");
+assert.equal(document.getElementById("ed-e2-nombre").value, "Luis Martínez");
+assert.equal(document.getElementById("ed-e2-tel").value, "81 2040 7645");
+assert.match(fEd.textContent, /invitación nueva/); // aviso del cambio de teléfono (empleado activo)
+// sin cambios: no escribe
+const antes = llamadas.filter((c) => c[0] === "update" && c[1] === "empleados").length;
+fEd.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true }));
+await esperar();
+assert.match(document.getElementById("avisos").textContent, /No hay cambios/);
+assert.equal(llamadas.filter((c) => c[0] === "update" && c[1] === "empleados").length, antes);
+// validación
+document.getElementById("ed-e2-nombre").value = "";
+document.getElementById("ed-e2-tel").value = "123";
+fEd.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true }));
+await esperar();
+assert.match(fEd.textContent, /Escribe el nombre del empleado/);
+assert.match(fEd.textContent, /celular de 10 dígitos/);
+assert.equal(document.getElementById("ed-e2-nombre").getAttribute("aria-invalid"), "true");
+// cambios válidos: solo se mandan los campos que cambiaron
+document.getElementById("ed-e2-nombre").value = "Luis A. Martínez";
+document.getElementById("ed-e2-tel").value = "33 9876 5432";
+const opNorte = document.createElement("option"); opNorte.value = "s2"; opNorte.textContent = "Sede Norte";
+document.getElementById("ed-e2-sede").append(opNorte); document.getElementById("ed-e2-sede").value = "s2";
+document.getElementById("ed-e2-num").value = "77";
+document.getElementById("ed-e2-ing").value = "2026-02-10";
+fEd.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true }));
+await esperar(100);
+const upd = llamadas.filter((c) => c[0] === "update" && c[1] === "empleados").at(-1);
+assert.deepEqual(upd[2], { nombre: "Luis A. Martínez", telefono: "+523398765432", sede_id: "s2", num_empleado: "77", fecha_ingreso: "2026-02-10" });
+assert.match(document.getElementById("avisos").textContent, /Falta invitarlo de nuevo/);
+assert.match(texto(), /Luis A\. Martínez/);
+// restaurar los datos para las pruebas siguientes
+Object.assign(datos.empleados.find((e) => e.id === "e2"), { nombre: nombreOriginal, telefono: "+528120407645", sede_id: "s1", num_empleado: undefined, fecha_ingreso: undefined });
+console.log("OK Equipo: editar datos del empleado (validación, solo lo que cambió, aviso de teléfono)");
+
 // 5. Correcciones
 location.hash = "#/correcciones";
 window.dispatchEvent(new dom.window.Event("hashchange"));

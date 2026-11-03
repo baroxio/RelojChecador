@@ -6,7 +6,7 @@ import {
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
   PERIODOS, ETIQUETA_ESTADO_DIA, ENCABEZADOS_CSV_RESUMEN, ENCABEZADOS_CSV_DETALLE, aCSV, errorDePeriodo, filasCSVDetalle, filasCSVResumen, formatearHoras, periodoPredefinido, reporteAsistencia, sumarDias, totalesGenerales,
-  NOMBRES_DIA, ZONAS_HORARIAS_MX, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
+  NOMBRES_DIA, ZONAS_HORARIAS_MX, diferenciasEmpleado, validarDatosEmpleado, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
 } from "./logic.js";
 
 const SVG = (d, relleno = false) =>
@@ -687,7 +687,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     async function cargar() {
       lista.replaceChildren(esqueletos(4));
       try {
-        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado").eq("empresa_id", eid()).order("nombre"));
+        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado,fecha_ingreso").eq("empresa_id", eid()).order("nombre"));
         if (ctx.vigente()) pintar();
       } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
     }
@@ -757,10 +757,70 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
             await cargar();
           } catch (err) { avisar(mensajeDeError(err), "error"); baja.disabled = false; }
         } }, "Dar de baja");
-      acciones.append(invitar, baja);
+      const zonaEdicion = h("div", {});
+      const editar = h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => mostrarEdicion(e, zonaEdicion) }, "Editar datos");
+      acciones.append(invitar, editar, baja);
       const zonaHorario = h("div", { style: "margin-top:.75rem" }, h("p", { class: "nota" }, "Cargando horario…"));
-      cuerpo.replaceChildren(zonaHorario, acciones, zonaInvitacion);
+      cuerpo.replaceChildren(zonaHorario, acciones, zonaEdicion, zonaInvitacion);
       pintarHorarioEmpleado(e, zonaHorario);
+    }
+
+    // Edición de los datos de un empleado. Solo dueño y administrador (lo exige también la base por RLS).
+    function mostrarEdicion(e, zona) {
+      if (zona.firstChild) { zona.replaceChildren(); return; }
+      const id = `ed-${e.id}`;
+      const nombre = h("input", { class: "entrada", id: `${id}-nombre`, autocomplete: "off", value: e.nombre });
+      const telefono = h("input", { class: "entrada", id: `${id}-tel`, type: "tel", inputmode: "tel", autocomplete: "off", value: formatearTelefono(e.telefono).replace(/^\+52 /, "") });
+      const sede = h("select", { class: "entrada", id: `${id}-sede` }, estado.sedes.map((x) => h("option", { value: x.id, selected: x.id === e.sede_id }, x.nombre)));
+      const numero = h("input", { class: "entrada", id: `${id}-num`, autocomplete: "off", value: e.num_empleado ?? "" });
+      const ingreso = h("input", { class: "entrada", id: `${id}-ing`, type: "date", value: e.fecha_ingreso ?? "" });
+      const err = { nombre: h("div", { class: "error-campo", hidden: true }), telefono: h("div", { class: "error-campo", hidden: true }),
+        sede: h("div", { class: "error-campo", hidden: true }), fecha: h("div", { class: "error-campo", hidden: true }) };
+      const campos = { nombre, telefono, sede, fecha: ingreso };
+      const guardar = h("button", { class: "boton boton--primario boton--chico", type: "submit" }, "Guardar cambios");
+      const notaTelefono = e.estado === "activo"
+        ? h("small", {}, "Si lo cambias, mándale una invitación nueva: el número anterior deja de servir hasta que el empleado acepte la nueva desde su teléfono nuevo.")
+        : null;
+      const notaSede = estado.sedes.length > 1
+        ? h("small", {}, "Cambia la geocerca con la que se valida su ubicación. Sus registros anteriores se quedan en la sede de entonces.")
+        : null;
+      const form = h("form", { class: "formulario", style: "margin-top:.75rem", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault();
+          for (const [k, el] of Object.entries(err)) { el.hidden = true; campos[k].removeAttribute("aria-invalid"); }
+          const { errores, valores } = validarDatosEmpleado({ nombre: nombre.value, telefono: telefono.value, sede_id: sede.value, num_empleado: numero.value, fecha_ingreso: ingreso.value });
+          const claves = Object.keys(errores);
+          for (const k of claves) { err[k].textContent = errores[k]; err[k].hidden = false; campos[k].setAttribute("aria-invalid", "true"); }
+          if (claves.length) return;
+          const cambios = diferenciasEmpleado(e, valores);
+          if (!Object.keys(cambios).length) { avisar("No hay cambios que guardar."); return; }
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            await q(sb.from("empleados").update(cambios).eq("id", e.id));
+            avisar(cambios.telefono && e.estado === "activo"
+              ? `Datos de ${valores.nombre} guardados. Falta invitarlo de nuevo desde su teléfono nuevo.`
+              : `Datos de ${valores.nombre} guardados.`);
+            await cargar();
+          } catch (error) {
+            if (error?.code === "23505") { err.telefono.textContent = "Ese teléfono o número de empleado ya existe en tu empresa."; err.telefono.hidden = false; }
+            else if (error?.code === "23514") { err.fecha.textContent = "La fecha de ingreso no puede ser posterior a la fecha de baja."; err.fecha.hidden = false; }
+            else avisar(mensajeDeError(error), "error");
+            guardar.removeAttribute("aria-busy"); guardar.disabled = false;
+          }
+        } },
+        h("h3", {}, "Editar datos"),
+        h("div", { class: "campo" }, h("label", { for: `${id}-nombre` }, "Nombre completo"), nombre, err.nombre),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: `${id}-tel` }, "Celular (WhatsApp)"), telefono, err.telefono, notaTelefono),
+          h("div", { class: "campo" }, h("label", { for: `${id}-sede` }, "Sede"), sede, err.sede, notaSede)),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: `${id}-num` }, "Número de empleado (opcional)"), numero),
+          h("div", { class: "campo" }, h("label", { for: `${id}-ing` }, "Fecha de ingreso (opcional)"), ingreso, err.fecha,
+            h("small", {}, "Los reportes no cuentan faltas antes de esta fecha."))),
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => zona.replaceChildren() }, "Cancelar")));
+      zona.replaceChildren(form);
+      nombre.focus();
     }
 
     async function pintarHorarioEmpleado(e, zonaH) {

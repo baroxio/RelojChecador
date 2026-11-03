@@ -7,7 +7,7 @@ import {
   normalizarTelefonoMx, parsearVigencia, resumenDelDia, etiquetaSenal, rolesAsignables, puedeGestionarRol,
   parsearCoordenadas, errorDeGeocerca, errorDeHorario, resumenHorario, planearCambioHorario,
   sumarDias, rangoDeFechas, periodoPredefinido, errorDePeriodo, armarJornadas, reporteAsistencia, totalesGenerales,
-  celdaCSV, aCSV, horasDecimales, formatearHoras, filasCSVDetalle, ENCABEZADOS_CSV_DETALLE,
+  validarDatosEmpleado, diferenciasEmpleado, celdaCSV, aCSV, horasDecimales, formatearHoras, filasCSVDetalle, ENCABEZADOS_CSV_DETALLE,
 } from "./logic.js";
 
 const MX = "America/Mexico_City";
@@ -343,4 +343,26 @@ test("CSV de detalle: una fila por día salvo los pendientes", () => {
   assert.equal(filas[0].length, ENCABEZADOS_CSV_DETALLE.length);
   assert.deepEqual(filas[0].slice(0, 8), ["2026-11-04", "7", "Ana López", "Centro", "Retardo", "09:20", "18:00", 20]);
   assert.match(filas[0][10], /idéntica.*; .*mapa/);
+});
+
+// --- Edición de empleados ---------------------------------------------------
+
+test("empleado: validación y normalización del formulario", () => {
+  const ok = validarDatosEmpleado({ nombre: "  Ana   López ", telefono: "33 1234 5678", sede_id: "s1", num_empleado: " 12 ", fecha_ingreso: "2026-03-01" });
+  assert.deepEqual(ok.errores, {});
+  assert.deepEqual(ok.valores, { nombre: "Ana López", telefono: "+523312345678", sede_id: "s1", num_empleado: "12", fecha_ingreso: "2026-03-01" });
+  const vacios = validarDatosEmpleado({ nombre: "", telefono: "123", sede_id: "", num_empleado: "", fecha_ingreso: "" });
+  assert.deepEqual(Object.keys(vacios.errores).sort(), ["nombre", "sede", "telefono"]);
+  assert.equal(vacios.valores.num_empleado, null);
+  assert.equal(vacios.valores.fecha_ingreso, null);
+  assert.match(validarDatosEmpleado({ nombre: "Ana", telefono: "3312345678", sede_id: "s1", fecha_ingreso: "2026-13-45" }).errores.fecha, /no es válida/);
+  assert.match(validarDatosEmpleado({ nombre: "Ana", telefono: "3312345678", sede_id: "s1", fecha_ingreso: "01/03/2026" }).errores.fecha, /no es válida/);
+});
+
+test("empleado: solo se actualiza lo que cambió", () => {
+  const actual = { nombre: "Ana López", telefono: "+523312345678", sede_id: "s1", num_empleado: null, fecha_ingreso: "2026-03-01" };
+  const mismo = validarDatosEmpleado({ nombre: "Ana López", telefono: "33 1234 5678", sede_id: "s1", num_empleado: "", fecha_ingreso: "2026-03-01" }).valores;
+  assert.deepEqual(diferenciasEmpleado(actual, mismo), {});
+  const cambio = validarDatosEmpleado({ nombre: "Ana L. Ruiz", telefono: "33 9999 0000", sede_id: "s2", num_empleado: "45", fecha_ingreso: "" }).valores;
+  assert.deepEqual(diferenciasEmpleado(actual, cambio), { nombre: "Ana L. Ruiz", telefono: "+523399990000", sede_id: "s2", num_empleado: "45", fecha_ingreso: null });
 });

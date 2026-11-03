@@ -24,8 +24,8 @@ const datos = {
     e("e5", "Marta Salas", "+523312345605"),
     { id: "e6", nombre: "Jorge Hernández", telefono: "+523312345606", estado: "invitado", sede_id: "s1" },
   ],
-  horarios: [{ id: "h1", tolerancia_retardo_min: 10 }],
-  horario_dias: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ horario_id: "h1", dia_semana: d, hora_entrada: "09:00:00" })),
+  horarios: [{ id: "h1", nombre: "Tienda", tolerancia_retardo_min: 10 }],
+  horario_dias: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ horario_id: "h1", dia_semana: d, hora_entrada: "09:00:00", hora_salida: "18:00:00" })),
   empleado_horarios: ["e1", "e2", "e3", "e4", "e5"].map((id) => ({ empleado_id: id, horario_id: "h1", vigencia: "[2026-01-01,)" })),
   registros_efectivos: [
     { origen: "registro", fuente_id: "r1", empleado_id: "e1", sede_id: "s1", tipo: "entrada", hora_efectiva: a("09:24"), hora_original: a("09:24"), canal: "whatsapp", senales: [], medio_id: "m1", corregido: false },
