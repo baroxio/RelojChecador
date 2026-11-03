@@ -187,7 +187,7 @@ const fEd = document.querySelector("#eq-e2 form");
 assert.ok(fEd, "aparece el formulario de edición");
 assert.equal(document.getElementById("ed-e2-nombre").value, "Luis Martínez");
 assert.equal(document.getElementById("ed-e2-tel").value, "81 2040 7645");
-assert.match(fEd.textContent, /invitación nueva/); // aviso del cambio de teléfono (empleado activo)
+assert.match(fEd.textContent, /deja de servir al instante/); // aviso del cambio de teléfono (empleado activo)
 // sin cambios: no escribe
 const antes = llamadas.filter((c) => c[0] === "update" && c[1] === "empleados").length;
 fEd.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true }));
@@ -213,7 +213,7 @@ fEd.dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: tr
 await esperar(100);
 const upd = llamadas.filter((c) => c[0] === "update" && c[1] === "empleados").at(-1);
 assert.deepEqual(upd[2], { nombre: "Luis A. Martínez", telefono: "+523398765432", sede_id: "s2", num_empleado: "77", fecha_ingreso: "2026-02-10" });
-assert.match(document.getElementById("avisos").textContent, /Falta invitarlo de nuevo/);
+assert.match(document.getElementById("avisos").textContent, /ya no sirve: invítalo de nuevo/);
 assert.match(texto(), /Luis A\. Martínez/);
 // restaurar los datos para las pruebas siguientes
 Object.assign(datos.empleados.find((e) => e.id === "e2"), { nombre: nombreOriginal, telefono: "+528120407645", sede_id: "s1", num_empleado: undefined, fecha_ingreso: undefined });

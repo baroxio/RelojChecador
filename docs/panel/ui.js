@@ -779,7 +779,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const campos = { nombre, telefono, sede, fecha: ingreso };
       const guardar = h("button", { class: "boton boton--primario boton--chico", type: "submit" }, "Guardar cambios");
       const notaTelefono = e.estado === "activo"
-        ? h("small", {}, "Si lo cambias, mándale una invitación nueva: el número anterior deja de servir hasta que el empleado acepte la nueva desde su teléfono nuevo.")
+        ? h("small", {}, "Si lo cambias, el WhatsApp anterior deja de servir al instante. Mándale una invitación nueva para que registre desde el número nuevo.")
         : null;
       const notaSede = estado.sedes.length > 1
         ? h("small", {}, "Cambia la geocerca con la que se valida su ubicación. Sus registros anteriores se quedan en la sede de entonces.")
@@ -798,7 +798,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           try {
             await q(sb.from("empleados").update(cambios).eq("id", e.id));
             avisar(cambios.telefono && e.estado === "activo"
-              ? `Datos de ${valores.nombre} guardados. Falta invitarlo de nuevo desde su teléfono nuevo.`
+              ? `Datos de ${valores.nombre} guardados. Su WhatsApp anterior ya no sirve: invítalo de nuevo desde el número nuevo.`
               : `Datos de ${valores.nombre} guardados.`);
             await cargar();
           } catch (error) {
