@@ -175,6 +175,20 @@ echo "SALTAR_SELFIES=1" >> "$T/sin_s3.env"
 RC_CONFIG="$T/sin_s3.env" sh "$R" > "$T/salida5e.txt" 2>&1; cod=$?
 espera "SALTAR_SELFIES=1: respalda la base y avisa que omitió las selfies" "[ $cod -eq 0 ] && grep -q 'selfies=omitidas' $T/nas/ESTADO.txt"
 
+echo "=== 6. Con el usuario de solo lectura de crear_usuario_respaldo.sql (el que se crea en Supabase) ==="
+sed "s/PON_AQUI_UNA_CONTRASENA_LARGA/clavePrueba123/" "$RAIZ/respaldo/crear_usuario_respaldo.sql" | $P >/dev/null 2>"$T/rol.err"
+espera "el archivo SQL del usuario de respaldo se aplica sin errores" "[ ! -s $T/rol.err ]"
+[ -s "$T/rol.err" ] && sed 's/^/    | /' "$T/rol.err" | head -5
+rm -f "$D/base-$HOY.dump" "$D/auth-$HOY.dump" "$T/nas/ESTADO.txt"
+sed "s#^SUPABASE_DB_URL=.*#SUPABASE_DB_URL=postgresql://respaldo@/rc?host=$T\&port=5545#" "$T/respaldo.env" > "$T/solo_lectura.env"
+chmod 600 "$T/solo_lectura.env"
+ULTIMA="$T/salida6.txt"; RC_CONFIG="$T/solo_lectura.env" sh "$R" > "$ULTIMA" 2>&1; cod=$?
+espera "el respaldo completo funciona con el usuario de solo lectura (sin acceso al esquema private)" "[ $cod -eq 0 ] && [ -s $D/base-$HOY.dump ] && [ -s $D/auth-$HOY.dump ]"
+rs() { psql -h "$T" -p 5545 -U respaldo -d rc -Atc "$1" 2>&1; }
+espera "el usuario de solo lectura puede leer empleados y usuarios del panel" "[ \"\$(rs 'select count(*) from public.empleados')\" = 40 ] && [ \"\$(rs 'select count(*) from auth.users')\" = 1 ]"
+espera "el usuario de solo lectura NO puede modificar ni borrar" "rs \"update public.empleados set nombre = 'x'\" | grep -q 'permission denied' && rs 'delete from public.empresas' | grep -q 'permission denied' && rs 'update auth.users set email = null' | grep -q 'permission denied'"
+espera "el usuario de solo lectura no es superusuario ni crea roles" "[ \"\$(rs \"select rolsuper or rolcreaterole or rolcreatedb from pg_roles where rolname = 'respaldo'\")\" = f ]"
+
 echo
 [ "$fallas" -eq 0 ] && echo "Resultado: TODO OK" || echo "Resultado: HAY $fallas FALLAS"
 exit "$fallas"

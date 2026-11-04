@@ -27,14 +27,14 @@ El script **verifica cada archivo antes de darlo por bueno**: que `pg_restore` l
 ### 1. Usuario de solo lectura en Supabase
 Así, si alguien roba la contraseña guardada en el NAS, puede leer pero no cambiar ni borrar nada.
 1. Abre [`respaldo/crear_usuario_respaldo.sql`](../respaldo/crear_usuario_respaldo.sql) y cambia `PON_AQUI_UNA_CONTRASENA_LARGA` por una contraseña larga de **solo letras y números**. Guárdala: la usarás en el paso 3.
-2. Pégalo completo en el **SQL Editor** de Supabase y córrelo. Al final debe mostrar `respaldo | t`.
+2. Pégalo completo en el **SQL Editor** de Supabase y córrelo. Al final debe mostrar `respaldo | t`. *(En este proyecto el usuario ya se creó el 2026-11-04; si lo vuelves a correr dará «role already exists».)*
 3. Si el primer comando da error por `BYPASSRLS`, no te quedes sin respaldo: usa el usuario `postgres` (con su contraseña) en el paso 3. Tiene más permisos, pero el respaldo es el mismo.
 
 ### 2. Llaves S3 para las selfies
 En Supabase: **Project Settings > Storage > S3 Connection > New access key**. Copia el *Access key ID* y el *Secret access key* (el secreto solo se muestra una vez) y el *Endpoint*.
 
 ### 3. La cadena de conexión
-En Supabase, botón **Connect** > **Session pooler** > URI. Reemplaza la contraseña por la del usuario `respaldo` (el usuario tiene la forma `respaldo.bclmvyifdxalnfxzjmyj`). Usa el pooler porque funciona por IPv4; la conexión directa puede requerir IPv6.
+En Supabase, botón **Connect** > **Session pooler** > URI. Reemplaza la contraseña por la del usuario `respaldo` (el usuario tiene la forma `respaldo.bclmvyifdxalnfxzjmyj`). Usa el pooler porque funciona por IPv4; la conexión directa puede requerir IPv6. Para este proyecto el servidor es `aws-1-us-west-2.pooler.supabase.com`, puerto **5432** (Session pooler; el 6543 es modo transacción y no sirve para `pg_dump`).
 
 ### 4. Preparar el NAS
 1. **Panel de control > Carpeta compartida > Crear** una carpeta `respaldos`. Conviene **cifrarla** (opción al crearla): los respaldos tienen datos personales y contraseñas cifradas de los usuarios.
@@ -82,5 +82,5 @@ El único mensaje de error esperado es `schema "public" already exists`: es inof
 - Un respaldo que nunca se restauró no es de fiar: restaura uno cada tres meses en un Postgres temporal.
 
 ## Qué está probado y qué no
-- **Probado** (`bash tests/respaldo/prueba.sh`, 29 comprobaciones): contra un PostgreSQL 16 real con las migraciones del repositorio y un `docker` simulado. Cubre el respaldo, la verificación, que se pueda **restaurar en una base vacía con los mismos datos** (empleados, empresas, usuarios, bitácora sin duplicados, funciones de seguridad, inmutabilidad de registros), que no borre selfies ya respaldadas, la limpieza (30 días y uno por mes), el bloqueo contra dos corridas a la vez y los fallos (base o selfies inaccesibles, S3 sin configurar).
+- **Probado** (`bash tests/respaldo/prueba.sh`, 34 comprobaciones): contra un PostgreSQL 16 real con las migraciones del repositorio y un `docker` simulado. Cubre el respaldo, la verificación, que se pueda **restaurar en una base vacía con los mismos datos** (empleados, empresas, usuarios, bitácora sin duplicados, funciones de seguridad, inmutabilidad de registros), que no borre selfies ya respaldadas, la limpieza (30 días y uno por mes), el bloqueo contra dos corridas a la vez, los fallos (base o selfies inaccesibles, S3 sin configurar) y que el respaldo funciona con el usuario de solo lectura de `crear_usuario_respaldo.sql` (puede leer todo y no puede modificar nada).
 - **Sin probar:** Docker real y el NAS, el Session pooler de Supabase con el usuario `respaldo` y la sincronización S3 con llaves reales. El protocolo S3 de tu proyecto sí responde (`Missing signature`). Por eso el primer paso a mano (paso 5) es obligatorio.
