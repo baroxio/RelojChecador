@@ -57,6 +57,14 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
    - Meta rechaza como Utilidad las plantillas que parecen un código de verificación; el primer texto ("...envía el mensaje que aparece: {{3}}") disparó esa advertencia y por eso se reescribió, y el ejemplo de {{3}} no lleva código.
 2. Cuando Meta la apruebe (estado *Active*), guardar en Supabase > Edge Functions > Secrets: `WHATSAPP_PLANTILLA_ALTA` = `alta_empleado` (y `WHATSAPP_PLANTILLA_IDIOMA` solo si no es `es_MX`; el idioma enviado es *Spanish (MEX)* = `es_MX`).
 
+## Fase 5: reportes de asistencia (construida, falta probar en vivo)
+Menú **Reportes**: se elige un periodo (esta semana, semana pasada, este mes, mes pasado u otro de hasta 62 días) y, si hay varias, una sede. El panel calcula por empleado los días con asistencia, faltas, retardos (contra el horario y su tolerancia), jornadas sin salida y horas trabajadas (descontando pausas), y el detalle día por día.
+- **Excel**: botón *Descargar Excel* genera un `.xlsx` con las hojas Resumen y Detalle, directamente en el navegador (sin enviar datos a ningún servicio).
+- **PDF**: botón *Guardar PDF* abre el diálogo de impresión del dispositivo con una hoja preparada; se elige "Guardar como PDF".
+- Reglas: una jornada cuenta en el día local de su entrada (los turnos nocturnos no se parten); una falta es un día laboral ya terminado sin entrada, solo para empleados activos con horario asignado; los invitados no aparecen; los registros corregidos usan la hora corregida y se marcan en Observaciones.
+- Código: `docs/panel/reportes.js` (lógica y escritor de `.xlsx`, con pruebas en `reportes.test.mjs`) y `vistaReportes` en `ui.js`. No requiere migración ni función del servidor: usa la vista `registros_efectivos` y las reglas de acceso existentes (un supervisor solo reporta sus sedes).
+- Pendiente: horas extra, feriados y formato para inspección STPS (ver `funcionalidades.md` sección 3.4).
+
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
 2. ~~Registro sin internet~~ Resuelto por defecto: cuenta como registro con señal y corrección pendiente (ver Fase 4). Se puede cambiar si prefieres que solo quede como aviso.

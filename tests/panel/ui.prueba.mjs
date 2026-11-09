@@ -49,7 +49,8 @@ function crearSb(sesion) {
       neq(c, v) { filtros.push((r) => r[c] !== v); return b; },
       gte(c, v) { filtros.push((r) => String(r[c]) >= String(v)); return b; },
       in(c, vs) { filtros.push((r) => vs.includes(r[c])); return b; },
-      order() { return b; }, limit() { return b; },
+      lt(c, v) { filtros.push((r) => String(r[c]) < String(v)); return b; },
+      order() { return b; }, limit() { return b; }, range() { return b; },
       insert(v) { modo = "insert"; carga = v; return b; },
       update(v) { modo = "update"; carga = v; return b; },
       delete() { modo = "delete"; return b; },
@@ -187,6 +188,32 @@ await esperar(100);
 const rpc = llamadas.find((c) => c[0] === "rpc");
 assert.ok(rpc && rpc[1] === "resolver_correccion" && rpc[2].p_aprobar === true && rpc[2].p_id === "c1");
 console.log("OK Correcciones: pendiente visible y aprobación por la función del servidor");
+
+// 5a. Reportes: periodo, tabla de resumen, Excel y PDF
+location.hash = "#/reportes";
+window.dispatchEvent(new dom.window.Event("hashchange"));
+await esperar(60);
+assert.match(texto(), /Asistencia por periodo/);
+assert.ok([...document.querySelectorAll(".nav a")].some((a) => a.textContent.includes("Reportes")), "el menú tiene Reportes");
+const descargas = [];
+dom.window.HTMLAnchorElement.prototype.click = function () { descargas.push(this.getAttribute("download")); };
+dom.window.print = () => { llamadas.push(["print", document.getElementById("impresion")?.textContent ?? ""]); };
+document.querySelector("form").dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true }));
+await esperar(120);
+t = texto();
+assert.match(t, /Luis Martínez/);
+assert.ok(!/Rosa Pérez/.test(t), "un empleado invitado no sale en el reporte");
+assert.match(t, /Descargar Excel/);
+assert.match(t, /Guardar PDF/);
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Descargar Excel").click();
+assert.match(descargas[0], /^asistencia_\d{4}-\d{2}-\d{2}_a_\d{4}-\d{2}-\d{2}\.xlsx$/);
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Guardar PDF").click();
+const imp = llamadas.find((c) => c[0] === "print");
+assert.ok(imp && /Reporte de asistencia/.test(imp[1]) && /Luis Martínez/.test(imp[1]) && /Detalle por día/.test(imp[1]), "la hoja de impresión lleva resumen y detalle");
+document.getElementById("rep-hasta").value = "2020-01-01"; document.getElementById("rep-desde").value = "2026-01-01";
+document.querySelector("form").dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true })); await esperar();
+assert.match(texto(), /no puede ser anterior/);
+console.log("OK Reportes: resumen, Excel, PDF y validación del periodo");
 
 // 5b. Cuenta y ayuda
 for (const ruta of ["#/cuenta", "#/mas"]) {

@@ -7,6 +7,7 @@ import {
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
   NOMBRES_DIA, ZONAS_HORARIAS_MX, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
 } from "./logic.js";
+import { crearXlsx, errorDeRango, nombreDeArchivo, periodosRapidos, reporteAsistencia, tablasDelReporte, ventanaDeConsulta } from "./reportes.js";
 
 const SVG = (d, relleno = false) =>
   `<svg viewBox="0 0 24 24" width="24" height="24" fill="${relleno ? "currentColor" : "none"}" stroke="${relleno ? "none" : "currentColor"}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
@@ -15,6 +16,7 @@ const ICONOS = {
   hoy: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   equipo: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.6c2.4.2 4 1.9 4 4.4"/>'),
   correcciones: SVG('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/>'),
+  reportes: SVG('<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>'),
   mas: SVG('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', true),
   agregar: SVG('<path d="M12 5v14M5 12h14"/>'),
   copiar: SVG('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>'),
@@ -241,7 +243,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
 
   function construirEstructura() {
     const enlaces = [];
-    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["correcciones", "Correcciones", "#/correcciones"]);
+    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["correcciones", "Correcciones", "#/correcciones"], ["reportes", "Reportes", "#/reportes"]);
     if (puedeAdministrar() || estado.plataforma) enlaces.push(["administrar", "Administrar", "#/administrar"]);
     enlaces.push(["usuario", "Cuenta", "#/cuenta"]);
     const nav = h("nav", { class: "nav", "aria-label": "Principal" }, enlaces.map(([id, texto, href]) =>
@@ -291,7 +293,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Rutas ----------
-  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, reportes: vistaReportes, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
 
   function rutear() {
     clearInterval(temporizador);
@@ -699,6 +701,138 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Correcciones ----------
+  // ---------- Reportes ----------
+  async function todasLasFilas(construir) {
+    const tam = 1000; // la API devuelve como máximo 1000 filas por consulta
+    const filas = [];
+    for (let desde = 0; ; desde += tam) {
+      const lote = await q(construir().range(desde, desde + tam - 1));
+      filas.push(...lote);
+      if (lote.length < tam) return filas;
+    }
+  }
+
+  function tablaDeReporte(t) {
+    return h("table", { class: "tabla" },
+      h("thead", {}, h("tr", {}, t.columnas.map(([titulo, tipo]) => h("th", { scope: "col", class: tipo === "numero" ? "tabla__num" : "" }, titulo)))),
+      h("tbody", {}, t.filas.map((fila) => h("tr", {}, fila.map((v, i) => h("td", { class: t.columnas[i][1] === "numero" ? "tabla__num" : "" }, v ?? ""))))));
+  }
+
+  function descargarArchivo(bytes, nombre, tipo) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: tipo }));
+    const a = h("a", { href: url, download: nombre });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+
+  // PDF: se arma una hoja solo para imprimir y se abre el diálogo del dispositivo ("Guardar como PDF").
+  function imprimirReporte({ tablas, titulo, lineas, archivo }) {
+    document.getElementById("impresion")?.remove();
+    const hoja = h("section", { id: "impresion" },
+      h("h1", {}, titulo), lineas.map((l) => h("p", {}, l)),
+      h("h2", {}, "Resumen por empleado"), tablaDeReporte(tablas.resumen),
+      h("h2", {}, "Detalle por día"), tablaDeReporte(tablas.detalle));
+    document.body.append(hoja);
+    const tituloAnterior = document.title;
+    document.title = archivo;
+    window.addEventListener("afterprint", () => { hoja.remove(); document.title = tituloAnterior; }, { once: true });
+    window.print();
+  }
+
+  async function vistaReportes(cont, ctx) {
+    const tzBase = estado.sedes[0]?.zona_horaria ?? "America/Mexico_City";
+    const hoy = fechaLocal(new Date(), tzBase);
+    const rapidos = periodosRapidos(hoy);
+    const desde = h("input", { class: "entrada", id: "rep-desde", type: "date", value: rapidos.semana.desde, max: hoy });
+    const hasta = h("input", { class: "entrada", id: "rep-hasta", type: "date", value: rapidos.semana.hasta, max: hoy });
+    const periodo = h("select", { class: "entrada", id: "rep-periodo", onchange: (e) => {
+      const p = rapidos[e.target.value];
+      if (p) { desde.value = p.desde; hasta.value = p.hasta; }
+    } },
+      Object.entries(rapidos).map(([k, p]) => h("option", { value: k }, p.etiqueta)),
+      h("option", { value: "otro" }, "Otro periodo"));
+    for (const campo of [desde, hasta]) campo.addEventListener("change", () => { periodo.value = "otro"; });
+    const sede = estado.sedes.length > 1
+      ? h("select", { class: "entrada", id: "rep-sede" }, h("option", { value: "todas" }, "Todas las sedes"), estado.sedes.map((s) => h("option", { value: s.id }, s.nombre)))
+      : null;
+    const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+    const generar = h("button", { class: "boton boton--primario", type: "submit" }, "Generar reporte");
+    const zona = h("div", { style: "margin-top:1rem" });
+    cont.replaceChildren(
+      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Reportes"), h("p", {}, "Asistencia por periodo, para descargar en Excel o PDF"))),
+      h("form", { class: "formulario", novalidate: true, onsubmit: (e) => { e.preventDefault(); crear(); } },
+        h("div", { class: "campo" }, h("label", { for: "rep-periodo" }, "Periodo"), periodo),
+        h("div", { class: "cuadricula", style: "grid-template-columns:1fr 1fr" },
+          h("div", { class: "campo" }, h("label", { for: "rep-desde" }, "Desde"), desde),
+          h("div", { class: "campo" }, h("label", { for: "rep-hasta" }, "Hasta"), hasta)),
+        sede && h("div", { class: "campo" }, h("label", { for: "rep-sede" }, "Sede"), sede),
+        error, generar),
+      zona);
+
+    async function crear() {
+      const problema = errorDeRango(desde.value, hasta.value);
+      error.hidden = !problema;
+      if (problema) { error.textContent = problema; return; }
+      const sedeId = sede?.value ?? "todas";
+      generar.disabled = true;
+      zona.replaceChildren(esqueletos(4));
+      try {
+        const { inicio, fin } = ventanaDeConsulta(desde.value, hasta.value, tzBase);
+        const [empleados, registros, horarios, horarioDias, empleadoHorarios] = await Promise.all([
+          q(sb.from("empleados").select("id,nombre,estado,sede_id").eq("empresa_id", eid())),
+          todasLasFilas(() => {
+            let consulta = sb.from("registros_efectivos").select("empleado_id,tipo,hora_efectiva,senales,corregido")
+              .eq("empresa_id", eid()).gte("hora_efectiva", inicio).lt("hora_efectiva", fin).order("hora_efectiva");
+            if (sedeId !== "todas") consulta = consulta.eq("sede_id", sedeId);
+            return consulta;
+          }),
+          q(sb.from("horarios").select("id,tolerancia_retardo_min").eq("empresa_id", eid())),
+          q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada")),
+          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia").eq("empresa_id", eid())),
+        ]);
+        if (!ctx.vigente()) return;
+        const reporte = reporteAsistencia({
+          empleados: empleados.filter((e) => sedeId === "todas" || e.sede_id === sedeId),
+          registros, desde: desde.value, hasta: hasta.value, tzPorSede: tzPorSede(),
+          datos: { horarios, horarioDias, empleadoHorarios }, nombreSede,
+        });
+        mostrar(reporte, sedeId);
+      } catch (err) {
+        if (ctx.vigente()) zona.replaceChildren(bloqueError(err, crear));
+      } finally { generar.disabled = false; }
+    }
+
+    function mostrar(reporte, sedeId) {
+      const tablas = tablasDelReporte(reporte);
+      const archivo = (ext) => nombreDeArchivo(desde.value, hasta.value, ext);
+      const lugar = sedeId === "todas" ? "Todas las sedes" : nombreSede(sedeId);
+      const lineas = [
+        `${estado.empresa?.nombre ?? ""} · ${lugar}`,
+        `Periodo: ${desde.value.split("-").reverse().join("/")} al ${hasta.value.split("-").reverse().join("/")}`,
+        `Generado el ${new Intl.DateTimeFormat("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: tzBase }).format(new Date())}`,
+      ];
+      if (!reporte.resumen.length) {
+        zona.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "No hay empleados para este reporte"), h("p", {}, "Los empleados invitados que aún no se vinculan no aparecen.")));
+        return;
+      }
+      const detalle = h("details", { class: "detalle-reporte" }, h("summary", {}, `Ver el detalle por día (${tablas.detalle.filas.length} filas)`));
+      detalle.addEventListener("toggle", () => {
+        if (detalle.open && !detalle.querySelector("table")) detalle.append(h("div", { class: "tabla-scroll" }, tablaDeReporte(tablas.detalle)));
+      });
+      zona.replaceChildren(
+        h("div", { class: "cabecera__acciones", style: "margin-bottom:.75rem; flex-wrap:wrap" },
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => {
+            descargarArchivo(crearXlsx([tablas.resumen, tablas.detalle]), archivo("xlsx"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+          } }, "Descargar Excel"),
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => imprimirReporte({ tablas, titulo: "Reporte de asistencia", lineas, archivo: archivo("pdf").replace(/\.pdf$/, "") }) }, "Guardar PDF")),
+        h("p", { class: "ayuda-reporte" }, "Una falta es un día de trabajo ya terminado sin entrada. Las horas descuentan las pausas."),
+        h("div", { class: "tabla-scroll" }, tablaDeReporte(tablas.resumen)),
+        detalle);
+    }
+  }
+
   async function vistaCorrecciones(cont, ctx) {
     const lista = h("div", {});
     const espacioForm = h("div", {});
