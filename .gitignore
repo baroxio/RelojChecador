@@ -28,3 +28,6 @@ tests/panel/package-lock.json
 
 # Token del túnel de Cloudflare
 deploy/nas/.env
+
+# Grafo de conocimiento (graphify)
+graphify-out/
