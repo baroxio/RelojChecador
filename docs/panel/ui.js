@@ -5,9 +5,10 @@ import {
   enlaceMensajeEmpleado, etiquetaSenal, fechaLocal, formatearDistancia, formatearDuracion,
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
-  NOMBRES_DIA, ZONAS_HORARIAS_MX, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
+  PERIODOS, ETIQUETA_ESTADO_DIA, ENCABEZADOS_CSV_RESUMEN, ENCABEZADOS_CSV_DETALLE, aCSV, errorDePeriodo, filasCSVDetalle, filasCSVResumen, formatearHoras, periodoPredefinido, reporteAsistencia, sumarDias, totalesGenerales,
+  NOMBRES_DIA, ZONAS_HORARIAS_MX, diferenciasEmpleado, validarDatosEmpleado, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
 } from "./logic.js";
-import { crearXlsx, errorDeRango, nombreDeArchivo, periodosRapidos, reporteAsistencia, tablasDelReporte, ventanaDeConsulta } from "./reportes.js";
+import { crearXlsx } from "./xlsx.js";
 
 const SVG = (d, relleno = false) =>
   `<svg viewBox="0 0 24 24" width="24" height="24" fill="${relleno ? "currentColor" : "none"}" stroke="${relleno ? "none" : "currentColor"}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
@@ -16,7 +17,7 @@ const ICONOS = {
   hoy: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   equipo: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.6c2.4.2 4 1.9 4 4.4"/>'),
   correcciones: SVG('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/>'),
-  reportes: SVG('<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>'),
+  reportes: SVG('<path d="M5 20V10M12 20V4M19 20v-7"/>'),
   mas: SVG('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', true),
   agregar: SVG('<path d="M12 5v14M5 12h14"/>'),
   copiar: SVG('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>'),
@@ -315,6 +316,222 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     window.scrollTo?.(0, 0);
   }
 
+  // ---------- Reportes ----------
+  async function todasLasFilas(construir) {
+    // Supabase entrega como máximo 1000 filas por consulta: se pide por páginas.
+    const TAM = 1000;
+    const filas = [];
+    for (let i = 0; ; i += TAM) {
+      const pagina = await q(construir().range(i, i + TAM - 1));
+      filas.push(...pagina);
+      if (pagina.length < TAM) return filas;
+    }
+  }
+
+  function descargarArchivo(nombre, contenido, tipo) {
+    const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
+    const a = h("a", { href: url, download: nombre });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  const fechaDeReporte = (fecha) =>
+    new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${fecha}T12:00:00Z`)).replace(".", "");
+
+  const CHIP_ESTADO = { asistio: "chip--ok", retardo: "chip--aviso", falta: "chip--rojo", incompleto: "chip--aviso", descanso_trabajado: "chip--ok" };
+
+  async function vistaReportes(cont, ctx) {
+    const tzBase = estado.sedes[0]?.zona_horaria ?? "America/Mexico_City";
+    const hoy = fechaLocal(new Date(), tzBase);
+    estado.reporte ??= { periodo: "semana", ...periodoPredefinido("semana", hoy) };
+    const sel = estado.reporte;
+
+    const periodo = h("select", { class: "entrada", id: "rep-periodo", onchange: (e) => {
+      sel.periodo = e.target.value;
+      const p = periodoPredefinido(sel.periodo, hoy);
+      if (p) { sel.desde = p.desde; sel.hasta = p.hasta; }
+      pintarControles();
+      cargar();
+    } }, PERIODOS.map(([v, t]) => h("option", { value: v, selected: sel.periodo === v }, t)));
+    const desde = h("input", { class: "entrada", type: "date", id: "rep-desde", max: hoy, onchange: (e) => { sel.desde = e.target.value; cargar(); } });
+    const hasta = h("input", { class: "entrada", type: "date", id: "rep-hasta", max: hoy, onchange: (e) => { sel.hasta = e.target.value; cargar(); } });
+    const fechas = h("div", { class: "cuadricula cuadricula--dos", hidden: true },
+      h("div", { class: "campo" }, h("label", { for: "rep-desde" }, "Desde"), desde),
+      h("div", { class: "campo" }, h("label", { for: "rep-hasta" }, "Hasta"), hasta));
+    const sede = estado.sedes.length > 1
+      ? h("select", { class: "entrada", "aria-label": "Sede", onchange: (e) => { estado.sedeFiltro = e.target.value; cargar(); } },
+          h("option", { value: "todas" }, "Todas las sedes"),
+          estado.sedes.map((s) => h("option", { value: s.id, selected: estado.sedeFiltro === s.id }, s.nombre)))
+      : null;
+    const zona = h("div", {});
+    function pintarControles() {
+      fechas.hidden = sel.periodo !== "personalizado";
+      desde.value = sel.desde ?? ""; hasta.value = sel.hasta ?? "";
+    }
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Reportes"), h("p", {}, "Asistencia, retardos, faltas y horas por periodo"))),
+      h("div", { class: "formulario filtros" },
+        h("div", { class: "campo" }, h("label", { for: "rep-periodo" }, "Periodo"), periodo),
+        fechas, sede),
+      zona);
+    pintarControles();
+
+    let reporte = null;
+    async function cargar() {
+      const problema = errorDePeriodo(sel.desde, sel.hasta);
+      if (problema) { zona.replaceChildren(h("div", { class: "aviso-bloque aviso-bloque--error", role: "alert" }, problema)); return; }
+      zona.replaceChildren(esqueletos(5));
+      try {
+        // Margen de un día por lado: una jornada nocturna o la diferencia de zona horaria puede cruzar la medianoche.
+        const desdeUTC = aUTCdesdeLocal(sumarDias(sel.desde, -1), "00:00", tzBase).toISOString();
+        const hastaUTC = aUTCdesdeLocal(sumarDias(sel.hasta, 2), "00:00", tzBase).toISOString();
+        const [empleados, registros, horarios, horarioDias, empleadoHorarios] = await Promise.all([
+          q(sb.from("empleados").select("id,nombre,estado,sede_id,num_empleado,fecha_ingreso,fecha_baja,creado_at").eq("empresa_id", eid()).order("nombre")),
+          todasLasFilas(() => sb.from("registros_efectivos")
+            .select("origen,fuente_id,empleado_id,sede_id,tipo,hora_efectiva,senales,corregido")
+            .eq("empresa_id", eid()).gte("hora_efectiva", desdeUTC).lt("hora_efectiva", hastaUTC)
+            .order("hora_efectiva").order("fuente_id")),
+          q(sb.from("horarios").select("id,tolerancia_retardo_min").eq("empresa_id", eid())),
+          q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada")),
+          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia").eq("empresa_id", eid())),
+        ]);
+        if (!ctx.vigente()) return;
+        const filtrados = empleados.filter((e) => estado.sedeFiltro === "todas" || e.sede_id === estado.sedeFiltro);
+        reporte = reporteAsistencia({
+          empleados: filtrados, registros, desde: sel.desde, hasta: sel.hasta, ahora: new Date(),
+          tzPorSede: tzPorSede(), datos: { horarios, horarioDias, empleadoHorarios },
+        });
+        mostrar();
+      } catch (err) {
+        if (ctx.vigente()) zona.replaceChildren(bloqueError(err, cargar));
+      }
+    }
+
+    function exportar(cual) {
+      const sufijo = `${sel.desde}_a_${sel.hasta}`;
+      const empresa = (estado.empresa?.nombre ?? "empresa").normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+      if (cual === "resumen") descargarArchivo(`asistencia_${empresa}_${sufijo}.csv`, aCSV(ENCABEZADOS_CSV_RESUMEN, filasCSVResumen(reporte, nombreSede)), "text/csv;charset=utf-8");
+      else descargarArchivo(`asistencia_detalle_${empresa}_${sufijo}.csv`, aCSV(ENCABEZADOS_CSV_DETALLE, filasCSVDetalle(reporte, nombreSede)), "text/csv;charset=utf-8");
+    }
+
+    // Las mismas filas del CSV sirven para Excel y PDF: una sola fuente de cifras.
+    function tablasDelReporte() {
+      const aTabla = (nombre, encabezados, filas, numericas, anchos) => ({
+        nombre,
+        columnas: encabezados.map((t, i) => [t, numericas.includes(i) ? "numero" : "texto", anchos[i]]),
+        filas: filas.map((fila) => fila.map((v, i) => (numericas.includes(i) && /^\d+(\.\d+)?$/.test(String(v)) ? Number(v) : v))),
+      });
+      return {
+        resumen: aTabla("Resumen", ENCABEZADOS_CSV_RESUMEN, filasCSVResumen(reporte, nombreSede), [3, 4, 5, 6, 7, 8, 9], [12, 28, 20, 12, 8, 10, 12, 12, 12, 12]),
+        detalle: aTabla("Detalle", ENCABEZADOS_CSV_DETALLE, filasCSVDetalle(reporte, nombreSede), [7, 8], [12, 12, 28, 20, 18, 9, 9, 12, 12, 12, 40]),
+      };
+    }
+
+    function nombreBase() {
+      const empresa = (estado.empresa?.nombre ?? "empresa").normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+      return `asistencia_${empresa}_${sel.desde}_a_${sel.hasta}`;
+    }
+
+    function exportarExcel() {
+      const t = tablasDelReporte();
+      descargarArchivo(`${nombreBase()}.xlsx`, crearXlsx([t.resumen, t.detalle]), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    // PDF: se arma una hoja solo para imprimir y se abre el diálogo del dispositivo ("Guardar como PDF").
+    function guardarPdf() {
+      const t = tablasDelReporte();
+      const tabla = (x) => h("table", { class: "tabla" },
+        h("thead", {}, h("tr", {}, x.columnas.map(([titulo]) => h("th", { scope: "col" }, titulo)))),
+        h("tbody", {}, x.filas.map((fila) => h("tr", {}, fila.map((v) => h("td", {}, v ?? ""))))));
+      document.getElementById("impresion")?.remove();
+      const hoja = h("section", { id: "impresion" },
+        h("h1", {}, "Reporte de asistencia"),
+        h("p", {}, `${estado.empresa?.nombre ?? ""} · ${estado.sedeFiltro === "todas" ? "Todas las sedes" : nombreSede(estado.sedeFiltro)}`),
+        h("p", {}, `Periodo: ${sel.desde.split("-").reverse().join("/")} al ${sel.hasta.split("-").reverse().join("/")}`),
+        h("h2", {}, "Resumen por empleado"), tabla(t.resumen),
+        h("h2", {}, "Detalle por día"), tabla(t.detalle));
+      document.body.append(hoja);
+      const tituloAnterior = document.title;
+      document.title = nombreBase();
+      window.addEventListener("afterprint", () => { hoja.remove(); document.title = tituloAnterior; }, { once: true });
+      window.print();
+    }
+
+    function metrica(valor, texto, alerta = false) {
+      return h("div", { class: `metrica${alerta && valor ? " metrica--alerta" : ""}` }, h("div", { class: "metrica__valor" }, String(valor)), h("div", { class: "metrica__texto" }, texto));
+    }
+
+    function mostrar() {
+      if (!reporte.filas.length) {
+        zona.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "No hay empleados para este periodo"),
+          h("p", {}, "Cuando haya empleados activos o registros en estas fechas, el reporte aparece aquí.")));
+        return;
+      }
+      const t = totalesGenerales(reporte.filas);
+      const incompletoHoy = reporte.fechas.includes(hoy) || sel.hasta >= hoy;
+      // replaceChildren convierte lo que no es un nodo en texto ("false"): solo se pasan nodos.
+      zona.replaceChildren(...[
+        h("div", { class: "metricas" },
+          metrica(t.empleados, "Empleados"), metrica(t.faltas, "Faltas", true), metrica(t.retardos, "Retardos", true),
+          metrica(formatearHoras(t.minutos), "Horas trabajadas")),
+        t.sinSalida > 0 && h("div", { class: "aviso-bloque", style: "margin-bottom:.75rem" },
+          `${t.sinSalida} ${t.sinSalida === 1 ? "día quedó" : "días quedaron"} sin salida registrada: sus horas no se suman hasta que se corrija.`),
+        h("div", { class: "cabecera__acciones", style: "margin-bottom:.75rem; flex-wrap:wrap" },
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => exportar("resumen") }, "Descargar resumen (CSV)"),
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => exportar("detalle") }, "Descargar detalle por día (CSV)"),
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: exportarExcel }, "Descargar Excel"),
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: guardarPdf }, "Guardar PDF")),
+        h("ul", { class: "lista" }, reporte.filas.map(filaReporte)),
+        h("p", { class: "nota", style: "margin-top:.75rem" },
+          `Del ${fechaDeReporte(sel.desde)} al ${fechaDeReporte(sel.hasta)}. Las horas descuentan las pausas y usan las correcciones aprobadas. ` +
+          (incompletoHoy ? "El día de hoy cuenta como falta una hora después de la entrada esperada. " : "") +
+          "Sin horario asignado no se pueden calcular faltas ni retardos."),
+      ].filter(Boolean));
+    }
+
+    function filaReporte(f) {
+      const detalle = h("div", { class: "detalle", hidden: true });
+      const id = `rep-${f.empleado.id}`;
+      detalle.id = id;
+      let pintado = false;
+      const boton = h("button", { class: "fila", type: "button", "aria-expanded": "false", "aria-controls": id, onclick: () => {
+        const abierto = boton.getAttribute("aria-expanded") === "true";
+        boton.setAttribute("aria-expanded", String(!abierto));
+        detalle.hidden = abierto;
+        if (!abierto && !pintado) { pintado = true; detalle.replaceChildren(tablaDias(f)); }
+      } },
+        h("span", { class: "avatar", "aria-hidden": "true" }, iniciales(f.empleado.nombre)),
+        h("span", { style: "min-width:0" },
+          h("div", { class: "fila__nombre" }, f.empleado.nombre),
+          h("div", { class: "fila__sub" }, [nombreSede(f.empleado.sede_id), `${f.totales.asistencias} ${f.totales.asistencias === 1 ? "asistencia" : "asistencias"}`, formatearHoras(f.totales.minutos)].filter(Boolean).join(" · "))),
+        h("span", { class: "fila__fin" },
+          f.totales.faltas > 0 && h("span", { class: "chip chip--rojo" }, `${f.totales.faltas} ${f.totales.faltas === 1 ? "falta" : "faltas"}`),
+          f.totales.retardos > 0 && h("span", { class: "chip chip--aviso" }, `${f.totales.retardos} ${f.totales.retardos === 1 ? "retardo" : "retardos"}`),
+          f.totales.sinSalida > 0 && h("span", { class: "chip chip--aviso" }, "Sin salida")),
+        h("span", { class: "fila__flecha" }, icono("flecha")));
+      return h("li", {}, boton, detalle);
+    }
+
+    function tablaDias(f) {
+      const visibles = f.dias.filter((d) => d.estado !== "pendiente");
+      return h("div", { class: "tabla-envoltura" }, h("table", { class: "tabla" },
+        h("thead", {}, h("tr", {}, ["Día", "Estado", "Entrada", "Salida", "Horas"].map((c) => h("th", { scope: "col" }, c)))),
+        h("tbody", {}, visibles.map((d) => h("tr", {},
+          h("th", { scope: "row" }, fechaDeReporte(d.fecha)),
+          h("td", {}, h("span", { class: `chip ${CHIP_ESTADO[d.estado] ?? "chip--baja"}` }, ETIQUETA_ESTADO_DIA[d.estado] ?? d.estado),
+            d.retardoMin > 0 && h("span", { class: "retardo" }, ` ${formatearDuracion(d.retardoMin)}`),
+            d.corregido && h("span", { class: "nota" }, " · corregido"),
+            d.senales.length > 0 && h("span", { class: "nota" }, ` · ${d.senales.length} ${d.senales.length === 1 ? "señal" : "señales"}`)),
+          h("td", {}, d.entrada ?? "—"), h("td", {}, d.salida ?? "—"),
+          h("td", {}, d.minutos ? formatearHoras(d.minutos) : "—"))))));
+    }
+
+    await cargar();
+  }
+
   // ---------- Hoy ----------
   async function vistaHoy(cont, ctx) {
     const selector = estado.sedes.length > 1
@@ -516,7 +733,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     async function cargar() {
       lista.replaceChildren(esqueletos(4));
       try {
-        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado").eq("empresa_id", eid()).order("nombre"));
+        empleados = await q(sb.from("empleados").select("id,nombre,telefono,estado,sede_id,num_empleado,fecha_ingreso").eq("empresa_id", eid()).order("nombre"));
         if (ctx.vigente()) pintar();
       } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
     }
@@ -586,10 +803,70 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
             await cargar();
           } catch (err) { avisar(mensajeDeError(err), "error"); baja.disabled = false; }
         } }, "Dar de baja");
-      acciones.append(invitar, baja);
+      const zonaEdicion = h("div", {});
+      const editar = h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => mostrarEdicion(e, zonaEdicion) }, "Editar datos");
+      acciones.append(invitar, editar, baja);
       const zonaHorario = h("div", { style: "margin-top:.75rem" }, h("p", { class: "nota" }, "Cargando horario…"));
-      cuerpo.replaceChildren(zonaHorario, acciones, zonaInvitacion);
+      cuerpo.replaceChildren(zonaHorario, acciones, zonaEdicion, zonaInvitacion);
       pintarHorarioEmpleado(e, zonaHorario);
+    }
+
+    // Edición de los datos de un empleado. Solo dueño y administrador (lo exige también la base por RLS).
+    function mostrarEdicion(e, zona) {
+      if (zona.firstChild) { zona.replaceChildren(); return; }
+      const id = `ed-${e.id}`;
+      const nombre = h("input", { class: "entrada", id: `${id}-nombre`, autocomplete: "off", value: e.nombre });
+      const telefono = h("input", { class: "entrada", id: `${id}-tel`, type: "tel", inputmode: "tel", autocomplete: "off", value: formatearTelefono(e.telefono).replace(/^\+52 /, "") });
+      const sede = h("select", { class: "entrada", id: `${id}-sede` }, estado.sedes.map((x) => h("option", { value: x.id, selected: x.id === e.sede_id }, x.nombre)));
+      const numero = h("input", { class: "entrada", id: `${id}-num`, autocomplete: "off", value: e.num_empleado ?? "" });
+      const ingreso = h("input", { class: "entrada", id: `${id}-ing`, type: "date", value: e.fecha_ingreso ?? "" });
+      const err = { nombre: h("div", { class: "error-campo", hidden: true }), telefono: h("div", { class: "error-campo", hidden: true }),
+        sede: h("div", { class: "error-campo", hidden: true }), fecha: h("div", { class: "error-campo", hidden: true }) };
+      const campos = { nombre, telefono, sede, fecha: ingreso };
+      const guardar = h("button", { class: "boton boton--primario boton--chico", type: "submit" }, "Guardar cambios");
+      const notaTelefono = e.estado === "activo"
+        ? h("small", {}, "Si lo cambias, el WhatsApp anterior deja de servir al instante. Mándale una invitación nueva para que registre desde el número nuevo.")
+        : null;
+      const notaSede = estado.sedes.length > 1
+        ? h("small", {}, "Cambia la geocerca con la que se valida su ubicación. Sus registros anteriores se quedan en la sede de entonces.")
+        : null;
+      const form = h("form", { class: "formulario", style: "margin-top:.75rem", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault();
+          for (const [k, el] of Object.entries(err)) { el.hidden = true; campos[k].removeAttribute("aria-invalid"); }
+          const { errores, valores } = validarDatosEmpleado({ nombre: nombre.value, telefono: telefono.value, sede_id: sede.value, num_empleado: numero.value, fecha_ingreso: ingreso.value });
+          const claves = Object.keys(errores);
+          for (const k of claves) { err[k].textContent = errores[k]; err[k].hidden = false; campos[k].setAttribute("aria-invalid", "true"); }
+          if (claves.length) return;
+          const cambios = diferenciasEmpleado(e, valores);
+          if (!Object.keys(cambios).length) { avisar("No hay cambios que guardar."); return; }
+          guardar.setAttribute("aria-busy", "true"); guardar.disabled = true;
+          try {
+            await q(sb.from("empleados").update(cambios).eq("id", e.id));
+            avisar(cambios.telefono && e.estado === "activo"
+              ? `Datos de ${valores.nombre} guardados. Su WhatsApp anterior ya no sirve: invítalo de nuevo desde el número nuevo.`
+              : `Datos de ${valores.nombre} guardados.`);
+            await cargar();
+          } catch (error) {
+            if (error?.code === "23505") { err.telefono.textContent = "Ese teléfono o número de empleado ya existe en tu empresa."; err.telefono.hidden = false; }
+            else if (error?.code === "23514") { err.fecha.textContent = "La fecha de ingreso no puede ser posterior a la fecha de baja."; err.fecha.hidden = false; }
+            else avisar(mensajeDeError(error), "error");
+            guardar.removeAttribute("aria-busy"); guardar.disabled = false;
+          }
+        } },
+        h("h3", {}, "Editar datos"),
+        h("div", { class: "campo" }, h("label", { for: `${id}-nombre` }, "Nombre completo"), nombre, err.nombre),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: `${id}-tel` }, "Celular (WhatsApp)"), telefono, err.telefono, notaTelefono),
+          h("div", { class: "campo" }, h("label", { for: `${id}-sede` }, "Sede"), sede, err.sede, notaSede)),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: `${id}-num` }, "Número de empleado (opcional)"), numero),
+          h("div", { class: "campo" }, h("label", { for: `${id}-ing` }, "Fecha de ingreso (opcional)"), ingreso, err.fecha,
+            h("small", {}, "Los reportes no cuentan faltas antes de esta fecha."))),
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => zona.replaceChildren() }, "Cancelar")));
+      zona.replaceChildren(form);
+      nombre.focus();
     }
 
     async function pintarHorarioEmpleado(e, zonaH) {
@@ -701,138 +978,6 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Correcciones ----------
-  // ---------- Reportes ----------
-  async function todasLasFilas(construir) {
-    const tam = 1000; // la API devuelve como máximo 1000 filas por consulta
-    const filas = [];
-    for (let desde = 0; ; desde += tam) {
-      const lote = await q(construir().range(desde, desde + tam - 1));
-      filas.push(...lote);
-      if (lote.length < tam) return filas;
-    }
-  }
-
-  function tablaDeReporte(t) {
-    return h("table", { class: "tabla" },
-      h("thead", {}, h("tr", {}, t.columnas.map(([titulo, tipo]) => h("th", { scope: "col", class: tipo === "numero" ? "tabla__num" : "" }, titulo)))),
-      h("tbody", {}, t.filas.map((fila) => h("tr", {}, fila.map((v, i) => h("td", { class: t.columnas[i][1] === "numero" ? "tabla__num" : "" }, v ?? ""))))));
-  }
-
-  function descargarArchivo(bytes, nombre, tipo) {
-    const url = URL.createObjectURL(new Blob([bytes], { type: tipo }));
-    const a = h("a", { href: url, download: nombre });
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  }
-
-  // PDF: se arma una hoja solo para imprimir y se abre el diálogo del dispositivo ("Guardar como PDF").
-  function imprimirReporte({ tablas, titulo, lineas, archivo }) {
-    document.getElementById("impresion")?.remove();
-    const hoja = h("section", { id: "impresion" },
-      h("h1", {}, titulo), lineas.map((l) => h("p", {}, l)),
-      h("h2", {}, "Resumen por empleado"), tablaDeReporte(tablas.resumen),
-      h("h2", {}, "Detalle por día"), tablaDeReporte(tablas.detalle));
-    document.body.append(hoja);
-    const tituloAnterior = document.title;
-    document.title = archivo;
-    window.addEventListener("afterprint", () => { hoja.remove(); document.title = tituloAnterior; }, { once: true });
-    window.print();
-  }
-
-  async function vistaReportes(cont, ctx) {
-    const tzBase = estado.sedes[0]?.zona_horaria ?? "America/Mexico_City";
-    const hoy = fechaLocal(new Date(), tzBase);
-    const rapidos = periodosRapidos(hoy);
-    const desde = h("input", { class: "entrada", id: "rep-desde", type: "date", value: rapidos.semana.desde, max: hoy });
-    const hasta = h("input", { class: "entrada", id: "rep-hasta", type: "date", value: rapidos.semana.hasta, max: hoy });
-    const periodo = h("select", { class: "entrada", id: "rep-periodo", onchange: (e) => {
-      const p = rapidos[e.target.value];
-      if (p) { desde.value = p.desde; hasta.value = p.hasta; }
-    } },
-      Object.entries(rapidos).map(([k, p]) => h("option", { value: k }, p.etiqueta)),
-      h("option", { value: "otro" }, "Otro periodo"));
-    for (const campo of [desde, hasta]) campo.addEventListener("change", () => { periodo.value = "otro"; });
-    const sede = estado.sedes.length > 1
-      ? h("select", { class: "entrada", id: "rep-sede" }, h("option", { value: "todas" }, "Todas las sedes"), estado.sedes.map((s) => h("option", { value: s.id }, s.nombre)))
-      : null;
-    const error = h("div", { class: "error-campo", role: "alert", hidden: true });
-    const generar = h("button", { class: "boton boton--primario", type: "submit" }, "Generar reporte");
-    const zona = h("div", { style: "margin-top:1rem" });
-    cont.replaceChildren(
-      h("div", { class: "cabecera" }, h("div", { class: "cabecera__texto" }, h("h1", {}, "Reportes"), h("p", {}, "Asistencia por periodo, para descargar en Excel o PDF"))),
-      h("form", { class: "formulario", novalidate: true, onsubmit: (e) => { e.preventDefault(); crear(); } },
-        h("div", { class: "campo" }, h("label", { for: "rep-periodo" }, "Periodo"), periodo),
-        h("div", { class: "cuadricula", style: "grid-template-columns:1fr 1fr" },
-          h("div", { class: "campo" }, h("label", { for: "rep-desde" }, "Desde"), desde),
-          h("div", { class: "campo" }, h("label", { for: "rep-hasta" }, "Hasta"), hasta)),
-        sede && h("div", { class: "campo" }, h("label", { for: "rep-sede" }, "Sede"), sede),
-        error, generar),
-      zona);
-
-    async function crear() {
-      const problema = errorDeRango(desde.value, hasta.value);
-      error.hidden = !problema;
-      if (problema) { error.textContent = problema; return; }
-      const sedeId = sede?.value ?? "todas";
-      generar.disabled = true;
-      zona.replaceChildren(esqueletos(4));
-      try {
-        const { inicio, fin } = ventanaDeConsulta(desde.value, hasta.value, tzBase);
-        const [empleados, registros, horarios, horarioDias, empleadoHorarios] = await Promise.all([
-          q(sb.from("empleados").select("id,nombre,estado,sede_id").eq("empresa_id", eid())),
-          todasLasFilas(() => {
-            let consulta = sb.from("registros_efectivos").select("empleado_id,tipo,hora_efectiva,senales,corregido")
-              .eq("empresa_id", eid()).gte("hora_efectiva", inicio).lt("hora_efectiva", fin).order("hora_efectiva");
-            if (sedeId !== "todas") consulta = consulta.eq("sede_id", sedeId);
-            return consulta;
-          }),
-          q(sb.from("horarios").select("id,tolerancia_retardo_min").eq("empresa_id", eid())),
-          q(sb.from("horario_dias").select("horario_id,dia_semana,hora_entrada")),
-          q(sb.from("empleado_horarios").select("empleado_id,horario_id,vigencia").eq("empresa_id", eid())),
-        ]);
-        if (!ctx.vigente()) return;
-        const reporte = reporteAsistencia({
-          empleados: empleados.filter((e) => sedeId === "todas" || e.sede_id === sedeId),
-          registros, desde: desde.value, hasta: hasta.value, tzPorSede: tzPorSede(),
-          datos: { horarios, horarioDias, empleadoHorarios }, nombreSede,
-        });
-        mostrar(reporte, sedeId);
-      } catch (err) {
-        if (ctx.vigente()) zona.replaceChildren(bloqueError(err, crear));
-      } finally { generar.disabled = false; }
-    }
-
-    function mostrar(reporte, sedeId) {
-      const tablas = tablasDelReporte(reporte);
-      const archivo = (ext) => nombreDeArchivo(desde.value, hasta.value, ext);
-      const lugar = sedeId === "todas" ? "Todas las sedes" : nombreSede(sedeId);
-      const lineas = [
-        `${estado.empresa?.nombre ?? ""} · ${lugar}`,
-        `Periodo: ${desde.value.split("-").reverse().join("/")} al ${hasta.value.split("-").reverse().join("/")}`,
-        `Generado el ${new Intl.DateTimeFormat("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: tzBase }).format(new Date())}`,
-      ];
-      if (!reporte.resumen.length) {
-        zona.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "No hay empleados para este reporte"), h("p", {}, "Los empleados invitados que aún no se vinculan no aparecen.")));
-        return;
-      }
-      const detalle = h("details", { class: "detalle-reporte" }, h("summary", {}, `Ver el detalle por día (${tablas.detalle.filas.length} filas)`));
-      detalle.addEventListener("toggle", () => {
-        if (detalle.open && !detalle.querySelector("table")) detalle.append(h("div", { class: "tabla-scroll" }, tablaDeReporte(tablas.detalle)));
-      });
-      zona.replaceChildren(
-        h("div", { class: "cabecera__acciones", style: "margin-bottom:.75rem; flex-wrap:wrap" },
-          h("button", { class: "boton boton--secundario", type: "button", onclick: () => {
-            descargarArchivo(crearXlsx([tablas.resumen, tablas.detalle]), archivo("xlsx"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-          } }, "Descargar Excel"),
-          h("button", { class: "boton boton--secundario", type: "button", onclick: () => imprimirReporte({ tablas, titulo: "Reporte de asistencia", lineas, archivo: archivo("pdf").replace(/\.pdf$/, "") }) }, "Guardar PDF")),
-        h("p", { class: "ayuda-reporte" }, "Una falta es un día de trabajo ya terminado sin entrada. Las horas descuentan las pausas."),
-        h("div", { class: "tabla-scroll" }, tablaDeReporte(tablas.resumen)),
-        detalle);
-    }
-  }
-
   async function vistaCorrecciones(cont, ctx) {
     const lista = h("div", {});
     const espacioForm = h("div", {});

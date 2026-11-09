@@ -3,7 +3,7 @@
 const VERSION = "2026.11.09-1";
 const CACHE = `rc-panel-${VERSION}`;
 const ARCHIVOS = [
-  "./", "index.html", "styles.css", "main.js", "ui.js", "logic.js", "reportes.js", "config.js",
+  "./", "index.html", "styles.css", "main.js", "ui.js", "logic.js", "xlsx.js", "config.js",
   "vendor/supabase.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
 ];
 

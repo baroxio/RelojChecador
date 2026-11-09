@@ -10,7 +10,7 @@ Lo que el dueño pidió para el panel, separado por fases. **Fase 1 ya está hec
 - [x] Sin internet: la app abre, avisa "Sin conexión" y Hoy muestra lo último cargado, marcado como tal. Los cambios (altas, correcciones) necesitan conexión.
 - Al publicar un cambio hay que **subir `VERSION` en `docs/panel/sw.js`**; si no, los teléfonos no detectan la versión nueva.
 
-## Fase 2: usuarios, roles y empresas (construida; falta aplicarla y probarla en vivo)
+## Fase 2: usuarios, roles y empresas (aplicada y desplegada; falta probarla en vivo)
 Decisión del dueño: **RH es simplemente administrador de su empresa**; no hay un rol nuevo. Los roles siguen siendo dueño, administrador, supervisor y consulta.
 
 Reglas (las aplica el servidor; el panel solo muestra u oculta opciones):
@@ -26,9 +26,9 @@ Piezas:
 - Panel: pantalla **Administrar** (Usuarios y, si aplica, Empresas), cambio de empresa para quien pertenece a varias, y cambio de contraseña en Cuenta.
 - Pruebas: 7 de reglas de permisos y 25 de la función con base simulada, más las de la interfaz.
 
-### Para activarla (pasos del dueño del proyecto)
-1. Correr la migración en el SQL Editor de Supabase.
-2. `git push`: el flujo de GitHub Actions despliega la función `administrar`.
+### Cómo se activó (2026-11-03)
+1. Migración aplicada en el SQL Editor de Supabase y verificada (tabla `plataforma_admins` con RLS y su política, `miembros_de_empresa()` y `usuario_id_por_correo()`).
+2. La función `administrar` se desplegó sola con el `git push` (GitHub Actions, ejecución en verde del 2026-10-19).
 3. **Opcional: ser administrador de la plataforma.** Solo si quieres administrar todas las empresas, corre (con tu correo):
 ```sql
 insert into public.plataforma_admins (user_id)
@@ -42,9 +42,10 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
 - **Administrar > Lugares:** crear y editar sedes (nombre, dirección, zona horaria de México), desactivarlas, y por sede agregar, editar y desactivar geocercas. La ubicación se toma con "Usar mi ubicación actual" parado en el lugar, o pegando las coordenadas de Google Maps; el radio va de 10 a 5000 m. Las geocercas no se borran porque los registros las referencian: se desactivan.
 - **Administrar > Horarios:** crear, editar y eliminar horarios con días, entrada, salida, pausa y tolerancias. Un horario asignado a empleados no se puede eliminar.
 - **Equipo > detalle del empleado:** asignar o quitar el horario. El cambio rige desde hoy: la asignación vigente se cierra hoy y queda en el historial (`empleado_horarios.vigencia`).
-- Pendiente: mapa dibujado para ajustar el círculo (se evitó un servicio de mapas externo por privacidad y para que el panel siga funcionando sin dependencias), jornada partida desde la pantalla (la base ya la soporta) y días festivos.
+- **Equipo > detalle del empleado > Editar datos:** nombre, celular, sede, número de empleado y fecha de ingreso (solo dueño y administrador; la bitácora de la base guarda el antes y el después). Solo se manda lo que cambió. Dos efectos a tener en cuenta: cambiar el **celular** revoca **al instante** el WhatsApp anterior (lo hace la base con un disparador, migración `20261103000100`, aplicada en la base real el 2026-11-03; su prueba `supabase/tests/revocar_vinculos_prueba.sql` dio TODO OK allí; el vínculo queda en el historial con el motivo `telefono_cambiado`) y hay que invitar de nuevo al empleado para que registre desde el número nuevo; cambiar la **sede** cambia la geocerca contra la que se valida su ubicación (los registros anteriores conservan su sede). La fecha de ingreso evita que los reportes cuenten faltas anteriores a ella.
+- Pendiente: reactivar a un empleado dado de baja, mapa dibujado para ajustar el círculo (se evitó un servicio de mapas externo por privacidad y para que el panel siga funcionando sin dependencias), jornada partida desde la pantalla (la base ya la soporta) y días festivos.
 
-## Fase 4: avisos y registro sin internet (construida, falta migrar, desplegar y probar con celular)
+## Fase 4: avisos y registro sin internet (migrada y desplegada; falta probar con celular y pedir la plantilla)
 **Registro sin internet ("registro diferido").** Límite de fondo: sin internet el empleado no recibe los mensajes del bot, y la hora que Meta entrega es la de **recepción en sus servidores**, no la del celular. Por eso la hora de un registro hecho sin conexión no se puede deducir; la declara el empleado:
 1. Sin internet escribe `entrada 8:55` (o `salida 18:05`, `pausa 14:00`), comparte su ubicación y manda su selfie. WhatsApp los entrega en orden al reconectar.
 2. El bot los procesa como un registro normal: se valida la geocerca con la ubicación enviada y el registro queda con la hora del servidor (los registros no se editan).
@@ -57,13 +58,26 @@ Todo se escribe desde el panel con la sesión del usuario: las políticas RLS qu
    - Meta rechaza como Utilidad las plantillas que parecen un código de verificación; el primer texto ("...envía el mensaje que aparece: {{3}}") disparó esa advertencia y por eso se reescribió, y el ejemplo de {{3}} no lleva código.
 2. Cuando Meta la apruebe (estado *Active*), guardar en Supabase > Edge Functions > Secrets: `WHATSAPP_PLANTILLA_ALTA` = `alta_empleado` (y `WHATSAPP_PLANTILLA_IDIOMA` solo si no es `es_MX`; el idioma enviado es *Spanish (MEX)* = `es_MX`).
 
-## Fase 5: reportes de asistencia (construida, falta probar en vivo)
-Menú **Reportes**: se elige un periodo (esta semana, semana pasada, este mes, mes pasado u otro de hasta 62 días) y, si hay varias, una sede. El panel calcula por empleado los días con asistencia, faltas, retardos (contra el horario y su tolerancia), jornadas sin salida y horas trabajadas (descontando pausas), y el detalle día por día.
-- **Excel**: botón *Descargar Excel* genera un `.xlsx` con las hojas Resumen y Detalle, directamente en el navegador (sin enviar datos a ningún servicio).
-- **PDF**: botón *Guardar PDF* abre el diálogo de impresión del dispositivo con una hoja preparada; se elige "Guardar como PDF".
-- Reglas: una jornada cuenta en el día local de su entrada (los turnos nocturnos no se parten); una falta es un día laboral ya terminado sin entrada, solo para empleados activos con horario asignado; los invitados no aparecen; los registros corregidos usan la hora corregida y se marcan en Observaciones.
-- Código: `docs/panel/reportes.js` (lógica y escritor de `.xlsx`, con pruebas en `reportes.test.mjs`) y `vistaReportes` en `ui.js`. No requiere migración ni función del servidor: usa la vista `registros_efectivos` y las reglas de acceso existentes (un supervisor solo reporta sus sedes).
-- Pendiente: horas extra, feriados y formato para inspección STPS (ver `funcionalidades.md` sección 3.4).
+## Fase 5: reportes (primera entrega construida; falta probarla con datos reales)
+Pantalla **Reportes** en el menú, para todos los roles (el supervisor ve solo sus sedes por RLS). No necesita migración ni función de servidor: lee `registros_efectivos` (con las correcciones aprobadas ya aplicadas), empleados y horarios con la sesión del usuario.
+- **Reporte de asistencia por periodo:** esta semana, semana pasada, quincena, mes, mes pasado o fechas elegidas (máximo 62 días), con filtro por sede. Por empleado: asistencias, faltas, retardos, horas trabajadas y, al tocarlo, el detalle día por día (estado, entrada, salida, horas, si hubo corrección o señales).
+- **Reglas de cálculo** (en `docs/panel/logic.js`, con pruebas):
+  - Una jornada empieza en una entrada y termina en la siguiente salida; las pausas se descuentan y un turno nocturno cuenta el día en que empezó.
+  - Falta = día laboral según el horario de entonces, sin registros, dentro de su alta (ingreso y baja). Hoy cuenta como falta una hora después de la entrada esperada.
+  - Retardo = primera entrada del día pasada la tolerancia del horario.
+  - Sin horario asignado no se calculan faltas ni retardos. Un día sin salida no suma horas y se avisa.
+  - Trabajar en un día de descanso se muestra aparte.
+- **Exportar a CSV** (abre en Excel con acentos): resumen por empleado y detalle por día. Las celdas que empiezan con `=`, `+`, `-` o `@` se protegen contra fórmulas.
+- **Excel y PDF:** *Descargar Excel* genera un `.xlsx` con las hojas Resumen y Detalle (escritor propio en `docs/panel/xlsx.js`, sin librerías y sin enviar datos a ningún servicio) y *Guardar PDF* abre el diálogo de impresión con una hoja preparada ("Guardar como PDF"). Salen de las mismas filas que el CSV.
+- Pendiente de reportes: reporte para inspección STPS (registros con sello y traza de correcciones), horas extra, salida anticipada, días festivos, prenómina y exportación para sistemas de nómina.
+
+## Fase 6: respaldo diario al NAS (construido; falta instalarlo en el NAS)
+Hasta ahora Supabase era el único lugar de los datos (la API no lista respaldos y no hay recuperación a un punto en el tiempo). Guía paso a paso en [`docs/respaldos.md`](respaldos.md); código en `respaldo/`.
+- Cada día, desde el Programador de tareas del NAS (con Container Manager): `pg_dump` de los esquemas `public` y `private`, los datos de los usuarios del panel (`auth.users` y `auth.identities`) y la sincronización del bucket de selfies por S3. Todo en contenedores: el NAS no instala nada.
+- Verifica cada archivo antes de darlo por bueno, no deja un respaldo falso si algo falla y termina con error para que DSM avise por correo. Conserva 30 días y el del día 1 de cada mes durante 12 meses. Nunca borra selfies ya respaldadas.
+- Usuario de **solo lectura** en Supabase (`respaldo/crear_usuario_respaldo.sql`); la contraseña vive solo en `respaldo.env` del NAS (no en el repositorio, que es público).
+- Probado con un PostgreSQL 16 real y un `docker` simulado (`bash tests/respaldo/prueba.sh`, 29 comprobaciones), incluida la **restauración en una base vacía con los mismos datos**. **Sin probar:** Docker real, el NAS, el Session pooler con el usuario `respaldo` y la sincronización S3 con llaves reales: la primera corrida a mano es obligatoria.
+- Pendiente: instalarlo, ensayar una restauración contra un proyecto de Supabase de prueba, y una segunda copia fuera del NAS (Hyper Backup).
 
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
