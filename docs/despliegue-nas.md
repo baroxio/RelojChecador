@@ -8,7 +8,7 @@ El panel son solo archivos estáticos (`docs/panel/`); los datos y el inicio de 
    cd /volume1/Docker/relojchecadorwhatsapp/deploy/nas
    docker compose up -d
    ```
-2. Prueba en tu red: `http://IP-DEL-NAS:8088/panel/` debe mostrar la pantalla de acceso.
+2. Prueba en tu red: `http://IP-DEL-NAS:8095/panel/` debe mostrar la pantalla de acceso.
 3. Para actualizar: `git pull` en la carpeta del repo. No hace falta reiniciar el contenedor.
 
 ## 2. Acceso desde fuera: dos caminos
@@ -25,7 +25,7 @@ No expones tu NAS ni tu IP: el NAS sale hacia Cloudflare y de ahí llega el trá
 ### Camino B: DDNS de Synology + proxy inverso de DSM, abriendo el puerto 443
 1. Panel de control > Acceso externo > DDNS: crea `tunombre.synology.me`.
 2. Panel de control > Seguridad > Certificado: pide uno de Let's Encrypt para ese nombre.
-3. Panel de control > Portal de inicio de sesión > Avanzado > Proxy inverso: origen `HTTPS tunombre.synology.me:443`, destino `HTTP localhost:8088`.
+3. Panel de control > Portal de inicio de sesión > Avanzado > Proxy inverso: origen `HTTPS tunombre.synology.me:443`, destino `HTTP localhost:8095`.
 4. En el router: reenviar el puerto 443 al NAS. Activa en DSM el firewall y el bloqueo automático de IP (Seguridad > Protección).
 5. No expongas el puerto de DSM (5000/5001) ni ningún otro servicio: solo el 443 hacia ese proxy.
 
