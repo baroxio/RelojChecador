@@ -17,10 +17,14 @@ El panel son solo archivos estáticos (`docs/panel/`); los datos y el inicio de 
 ### Camino A (recomendado): Cloudflare Tunnel, sin abrir puertos
 No expones tu NAS ni tu IP: el NAS sale hacia Cloudflare y de ahí llega el tráfico.
 1. Un dominio propio (con Cloudflare como DNS, plan gratuito).
-2. Cloudflare Zero Trust > Networks > Tunnels > crear túnel y copiar el token.
-3. En el NAS: `cd deploy/nas && cp .env.example .env`, pega el token en `TUNNEL_TOKEN=` y arranca con `docker compose --profile tunel up -d`. El contenedor `cloudflared` ya viene en el `docker-compose.yml`.
-4. En Cloudflare, en el túnel > *Public hostname*: `panel.tudominio.com`, servicio `HTTP`, URL `panel:80` (comparten red de Docker).
-5. Cloudflare pone el certificado HTTPS. Tu router no se toca. El panel queda en `https://panel.tudominio.com/panel/`.
+2. Si ya tienes un túnel en el NAS (el nuestro es `moba-tunnel`, con config local), agrega una regla antes de la final `http_status:404` en su `config.yml` (aquí `/volume1/Docker/cloudflared/config.yml`):
+   ```yaml
+   - hostname: checador.moba.mx
+     service: http://IP-DEL-NAS:8095
+   ```
+3. En Cloudflare > DNS, crea un CNAME `checador` (con proxy) hacia `ID-DEL-TUNEL.cfargotunnel.com` y reinicia el contenedor `cloudflared` (`docker restart cloudflared`).
+4. En el NAS, levanta el panel: `cd deploy/nas && docker compose up -d`.
+5. Cloudflare pone el certificado HTTPS. Tu router no se toca. El panel queda en `https://checador.moba.mx/panel/`.
 
 ### Camino B: DDNS de Synology + proxy inverso de DSM, abriendo el puerto 443
 1. Panel de control > Acceso externo > DDNS: crea `tunombre.synology.me`.

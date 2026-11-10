@@ -1,8 +1,8 @@
 # Sirve el panel (docs/) desde el NAS. Solo archivos estáticos, montados de solo lectura.
 # Uso (en la carpeta deploy/nas):  docker compose up -d
 # Se abre en http://IP-DEL-NAS:8095/panel/
-# Acceso desde fuera con Cloudflare Tunnel (necesita TUNNEL_TOKEN en deploy/nas/.env, ver docs/despliegue-nas.md):
-#   docker compose --profile tunel up -d
+# Acceso desde fuera: el túnel que ya existe en el NAS (moba-tunnel) publica checador.moba.mx -> http://192.168.68.117:8095
+# (regla en /volume1/Docker/cloudflared/config.yml, ver docs/despliegue-nas.md).
 services:
   panel:
     image: nginx:1.27-alpine
@@ -18,20 +18,5 @@ services:
       - /var/cache/nginx
       - /var/run
       - /tmp
-    security_opt:
-      - no-new-privileges:true
-
-  # Túnel de Cloudflare: el NAS sale hacia Cloudflare, no se abre ningún puerto en el router.
-  # Solo arranca con --profile tunel. En Cloudflare, el Public hostname apunta a http://panel:80
-  tunel:
-    image: cloudflare/cloudflared:latest
-    container_name: relojchecador-tunel
-    profiles: ["tunel"]
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?falta TUNNEL_TOKEN en deploy/nas/.env}
-    depends_on:
-      - panel
     security_opt:
       - no-new-privileges:true
