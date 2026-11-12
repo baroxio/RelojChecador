@@ -251,6 +251,9 @@ button.fila[aria-expanded="true"] .fila__flecha { transform: rotate(180deg); }
 .invitacion { background: var(--tinta-100); border-radius: var(--radio-sm); padding: 0.9rem; display: grid; gap: 0.7rem; }
 .nota { color: var(--suave); font-size: var(--t-xs); }
 .invitacion code { font-family: var(--mono); font-weight: 700; font-size: var(--t-lg); letter-spacing: 0.12em; }
+.invitacion__qr { display: grid; justify-items: center; gap: 0.5rem; }
+.invitacion__qr[hidden] { display: none; }
+.invitacion__qr svg { width: min(16rem, 100%); height: auto; background: #fff; border-radius: var(--radio-sm); }
 .invitacion__acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
 .avisos { position: fixed; inset: auto 1rem calc(var(--alto-nav) + 1rem + env(safe-area-inset-bottom)) 1rem; z-index: 40; display: grid; gap: 0.5rem; justify-items: center; pointer-events: none; }

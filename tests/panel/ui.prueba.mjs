@@ -11,6 +11,8 @@ dom.window.scrollTo = () => {};
 Object.defineProperty(globalThis, "navigator", { value: { clipboard: { writeText: async () => {} }, onLine: true }, configurable: true });
 globalThis.localStorage = dom.window.localStorage;
 
+import { createRequire } from "node:module";
+globalThis.qrcode = createRequire(import.meta.url)("../../docs/panel/vendor/qrcode.js");
 const { iniciarApp } = await import("../../docs/panel/ui.js");
 
 const ahora = Date.now();
@@ -94,6 +96,7 @@ globalThis.fetch = async (u, o) => {
   llamadas.push(["fetch", String(u), cuerpo]);
   const resp = (c, estado = 200) => ({ ok: estado < 400, status: estado, json: async () => c });
   switch (cuerpo.accion) {
+    case undefined: if (String(u).includes("crear-invitacion")) return resp({ codigo: "K7M2Q9XA", enlace: "https://wa.me/15556428542?text=ALTA%20K7M2Q9XA", expira_at: new Date(Date.now() + 72 * 3600_000).toISOString(), aviso: "no_configurado" }); return resp({ ok: true });
     case "crear_usuario": return resp({ miembro_id: "m9", correo: cuerpo.correo.toLowerCase(), clave_temporal: "Tmp9Abc2Def3Gh", ya_existia: false });
     case "listar_empresas": return resp({ empresas: [{ id: "emp", nombre: "Empresa de prueba", usuarios: 3, empleados: 2 }, { id: "otra", nombre: "Otra Empresa", usuarios: 1, empleados: 0 }] });
     case "crear_empresa": return resp({ empresa_id: "nueva", correo: cuerpo.correo_dueno, clave_temporal: "Emp5Xyz7Wvu4Ts", ya_existia: false });
@@ -429,6 +432,25 @@ await esperar(100);
 assert.ok(llamadas.find((c) => c[0] === "fetch" && c[2].accion === "crear_empresa" && c[2].correo_dueno === "carla@sol.mx"));
 assert.match(texto(), /Contraseña temporal: Emp5Xyz7Wvu4Ts/);
 console.log("OK Administrar: empresas de la plataforma y alta con dueño");
+
+// 5e. Invitación: código QR del enlace
+location.hash = "#/equipo"; window.dispatchEvent(new dom.window.Event("hashchange")); await esperar(100);
+[...document.querySelectorAll("button.fila")].find((b) => b.textContent.includes("Rosa Pérez")).click();
+await esperar(60);
+await esperar(120);
+[...document.querySelectorAll("button")].find((b) => b.textContent.includes("Invitar por WhatsApp")).click();
+await esperar(100);
+assert.match(texto(), /K7M2Q9XA/);
+let botonQR = [...document.querySelectorAll("button")].find((b) => b.textContent === "Mostrar QR");
+assert.ok(botonQR, "hay botón Mostrar QR");
+assert.ok(document.querySelector(".invitacion__qr").hidden, "el QR empieza oculto");
+botonQR.click();
+assert.ok(!document.querySelector(".invitacion__qr").hidden, "el QR se muestra");
+assert.ok(document.querySelector(".invitacion__qr svg rect, .invitacion__qr svg path"), "hay un SVG con el código");
+assert.equal(botonQR.textContent, "Ocultar QR");
+botonQR.click();
+assert.ok(document.querySelector(".invitacion__qr").hidden, "el QR se vuelve a ocultar");
+console.log("OK invitación: se puede mostrar el código QR");
 
 // 6. Texto de la base no se interpreta como HTML
 datos.empleados.push({ empresa_id: "emp", id: "e9", nombre: '<img src=x onerror="window.pwned=1">', telefono: "+523300000000", estado: "activo", sede_id: "s1" });

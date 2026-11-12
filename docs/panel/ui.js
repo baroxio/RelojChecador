@@ -909,7 +909,25 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         h("p", { class: "nota" }, `Sirve una sola vez y solo desde el teléfono ${formatearTelefono(e.telefono)}. Si generas otra invitación, esta deja de servir. Vence el ${caduca}`),
         h("div", { class: "invitacion__acciones" },
           h("a", { class: "boton boton--primario", target: "_blank", rel: "noopener noreferrer", href: enlaceMensajeEmpleado(e.telefono, e.nombre, inv.enlace) }, icono("enviar"), "Enviar por WhatsApp"),
-          h("button", { class: "boton boton--secundario", type: "button", onclick: () => copiar(inv.enlace) }, icono("copiar"), "Copiar enlace"))));
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => copiar(inv.enlace) }, icono("copiar"), "Copiar enlace"),
+          h("button", { class: "boton boton--secundario", type: "button", "aria-expanded": "false",
+            onclick: (ev) => alternarQR(ev.currentTarget, zona.querySelector(".invitacion__qr"), inv.enlace) }, "Mostrar QR")),
+        h("div", { class: "invitacion__qr", hidden: true })));
+    }
+
+    // Código QR del enlace de invitación: el empleado lo escanea con su teléfono y WhatsApp abre el mensaje listo.
+    function alternarQR(boton, caja, enlace) {
+      if (!caja) return;
+      if (!caja.hidden) { caja.hidden = true; boton.textContent = "Mostrar QR"; boton.setAttribute("aria-expanded", "false"); return; }
+      if (!caja.firstChild) {
+        if (typeof globalThis.qrcode !== "function") { avisar("No se pudo generar el QR.", "error"); return; }
+        const qr = globalThis.qrcode(0, "M"); qr.addData(enlace); qr.make();
+        caja.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+        const svg = caja.querySelector("svg");
+        svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Código QR de la invitación");
+        caja.append(h("p", { class: "nota" }, "Pídele que lo escanee con la cámara de su teléfono."));
+      }
+      caja.hidden = false; boton.textContent = "Ocultar QR"; boton.setAttribute("aria-expanded", "true");
     }
 
     function mostrarFormulario() {
