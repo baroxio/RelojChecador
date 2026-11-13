@@ -87,8 +87,9 @@ export function extraerMensajes(payload: any): MensajeEntrante[] {
             tipo: "image",
             imagen: { id: String(msg.image.id), mime: msg.image.mime_type, sha256: msg.image.sha256 },
           });
-        } else if (msg.type === "interactive" && msg.interactive?.button_reply?.id) {
-          salida.push({ ...base, tipo: "button", botonId: String(msg.interactive.button_reply.id) });
+        } else if (msg.type === "interactive" && (msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id)) {
+          const id = msg.interactive.button_reply?.id ?? msg.interactive.list_reply.id;
+          salida.push({ ...base, tipo: "button", botonId: String(id) });
         } else {
           salida.push({ ...base, tipo: "otro" });
         }
@@ -104,6 +105,7 @@ export type Comando =
   | { accion: "registrar"; tipo: "entrada" | "salida" | "pausa"; hora?: { h: number; m: number } }
   | { accion: "acepto" }
   | { accion: "no_acepto" }
+  | { accion: "historial" }
   | { accion: "menu" };
 
 export const BOTONES = {
@@ -112,6 +114,7 @@ export const BOTONES = {
   pausa: "reg_pausa",
   acepto: "aviso_acepto",
   noAcepto: "aviso_rechazo",
+  historial: "menu_historial",
 } as const;
 
 function normalizar(texto: string): string {
@@ -125,6 +128,7 @@ export function interpretarBoton(id: string): Comando | null {
     case BOTONES.pausa: return { accion: "registrar", tipo: "pausa" };
     case BOTONES.acepto: return { accion: "acepto" };
     case BOTONES.noAcepto: return { accion: "no_acepto" };
+    case BOTONES.historial: return { accion: "historial" };
     default: return null;
   }
 }
@@ -167,6 +171,7 @@ export function interpretarTexto(texto: string): Comando {
   if (dicha && tipoConHora) return { accion: "registrar", tipo: tipoConHora, hora: { h: dicha.h, m: dicha.m } };
   if (["acepto", "si acepto", "si"].includes(t)) return { accion: "acepto" };
   if (["no acepto", "no"].includes(t)) return { accion: "no_acepto" };
+  if (["historial", "mi historial", "mis registros", "registros"].includes(t)) return { accion: "historial" };
   return { accion: "menu" };
 }
 

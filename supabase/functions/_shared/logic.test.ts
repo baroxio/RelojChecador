@@ -79,6 +79,10 @@ test("comandos de texto y botones", () => {
   assert.deepEqual(interpretarTexto("Sí acepto"), { accion: "acepto" });
   assert.deepEqual(interpretarTexto("no acepto"), { accion: "no_acepto" });
   assert.deepEqual(interpretarTexto("hola buenas"), { accion: "menu" });
+  assert.deepEqual(interpretarTexto("Menú"), { accion: "menu" });
+  assert.deepEqual(interpretarTexto(" Historial "), { accion: "historial" });
+  assert.deepEqual(interpretarTexto("mis registros"), { accion: "historial" });
+  assert.deepEqual(interpretarBoton("menu_historial"), { accion: "historial" });
   assert.deepEqual(interpretarBoton("reg_salida"), { accion: "registrar", tipo: "salida" });
   assert.equal(interpretarBoton("desconocido"), null);
 });

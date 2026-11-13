@@ -67,6 +67,35 @@ export function enviarBotones(
   });
 }
 
+/** Lista desplegable (hasta 10 opciones); título de la opción de máximo 24 caracteres. */
+export function enviarLista(
+  phoneNumberId: string,
+  para: string,
+  texto: string,
+  botonTitulo: string,
+  opciones: { id: string; titulo: string; descripcion?: string }[],
+) {
+  return enviar(phoneNumberId, {
+    to: para,
+    type: "interactive",
+    interactive: {
+      type: "list",
+      body: { text: texto },
+      action: {
+        button: botonTitulo.slice(0, 20),
+        sections: [{
+          title: "Opciones",
+          rows: opciones.slice(0, 10).map((o) => ({
+            id: o.id,
+            title: o.titulo.slice(0, 24),
+            ...(o.descripcion ? { description: o.descripcion.slice(0, 72) } : {}),
+          })),
+        }],
+      },
+    },
+  });
+}
+
 /** Mensaje con botón "Enviar ubicación". */
 export function pedirUbicacion(phoneNumberId: string, para: string, texto: string) {
   return enviar(phoneNumberId, {

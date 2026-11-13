@@ -24,6 +24,7 @@ import {
 import {
   descargarMedio,
   enviarBotones,
+  enviarLista,
   enviarTexto,
   obtenerMedio,
   pedirUbicacion,
@@ -81,13 +82,16 @@ export async function procesarMensaje(db: SupabaseClient, m: MensajeEntrante, me
     await recibirUbicacion(ctx, empleado, vinculo, sesion);
   } else if (m.tipo === "image") {
     await recibirSelfie(ctx, empleado, vinculo, sesion);
+  } else if (comando?.accion === "historial") {
+    await enviarHistorial(ctx, empleado);
   } else if (comando?.accion === "registrar") {
     await iniciarRegistro(ctx, empleado, vinculo, comando.tipo, sesion, comando.hora);
   } else {
-    await enviarBotones(m.phoneNumberId, m.de, `Hola ${empleado.nombre}, ¿qué quieres registrar?`, [
+    await enviarLista(m.phoneNumberId, m.de, `Hola ${empleado.nombre}, ¿qué quieres hacer?`, "Ver menú", [
       { id: BOTONES.entrada, titulo: "Entrada" },
       { id: BOTONES.salida, titulo: "Salida" },
       { id: BOTONES.pausa, titulo: "Pausa / regreso" },
+      { id: BOTONES.historial, titulo: "Mi historial", descripcion: "Tus últimos registros" },
     ]);
   }
   return await cerrar(db, mensajeId, "procesado", null, ids);
@@ -381,6 +385,25 @@ async function completar(
     : null;
   const nota = horaDicha ? ` Quedó con la hora de ahora; tu hora (${horaDicha}) se mandó a tu supervisor para aprobarla.` : "";
   await enviarTexto(m.phoneNumberId, m.de, `✓ ${etiqueta(sesion.tipo)} registrada. ${hora}, ${sede?.nombre ?? "tu sede"}.${nota}`);
+}
+
+// --- Historial ----------------------------------------------------------
+
+/** Últimos registros del propio empleado, con la hora de su sede. */
+async function enviarHistorial(ctx: Ctx, empleado: Fila) {
+  const { data: sede } = await ctx.db.from("sedes").select("zona_horaria").eq("id", empleado.sede_id).single();
+  const tz = sede?.zona_horaria ?? "America/Mexico_City";
+  const { data: filas } = await ctx.db.from("registros").select("tipo, ocurrido_at")
+    .eq("empleado_id", empleado.id).eq("empresa_id", empleado.empresa_id)
+    .order("ocurrido_at", { ascending: false }).limit(10);
+  if (!filas?.length) {
+    return await responder(ctx, empleado, "Todavía no tienes registros. Escribe *entrada* para marcar el primero.");
+  }
+  const fmt = new Intl.DateTimeFormat("es-MX", {
+    timeZone: tz, weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+  const lineas = filas.map((f: Fila) => `• ${etiqueta(f.tipo)}: ${fmt.format(new Date(f.ocurrido_at))}`);
+  await responder(ctx, empleado, `Tus últimos registros:\n${lineas.join("\n")}\n\nEscribe *menú* para ver las opciones.`);
 }
 
 // --- Utilidades ---------------------------------------------------------
