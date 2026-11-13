@@ -249,7 +249,8 @@ async function recibirUbicacion(ctx: Ctx, empleado: Fila, vinculo: Fila, sesion:
     dentro_geocerca: geo?.dentro ?? false,
   };
 
-  if (!geo?.dentro) {
+  // Un empleado con sin_geocerca puede registrar desde cualquier lugar: se guarda su ubicación real.
+  if (!geo?.dentro && !empleado.sin_geocerca) {
     await db.from("sesiones_registro").update({ ...base, estado: "rechazada", motivo_rechazo: "fuera_de_geocerca" })
       .eq("id", sesion.id);
     const lejos = geo?.distancia_m ? ` Estás a unos ${formatearDistancia(geo.distancia_m)} de tu sede.` : "";
@@ -343,7 +344,8 @@ async function completar(
     lng: sesion.lng,
     geocerca_id: sesion.geocerca_id,
     distancia_m: sesion.distancia_m,
-    dentro_geocerca: true,
+    dentro_geocerca: sesion.dentro_geocerca === true,
+    geocerca_omitida: sesion.dentro_geocerca !== true && empleado.sin_geocerca === true,
     medio_id: medioId,
     senales,
   }).select("id, ocurrido_at").single();
