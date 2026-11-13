@@ -52,10 +52,10 @@ jobs:
           fi
       # Meta no envía un JWT de Supabase: el webhook se protege con la firma X-Hub-Signature-256.
       - name: Desplegar whatsapp-webhook
-        run: supabase functions deploy whatsapp-webhook --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+        run: supabase functions deploy whatsapp-webhook --project-ref "$SUPABASE_PROJECT_REF" --yes --no-verify-jwt
       # El panel llama a esta función con la sesión del usuario: la verificación de JWT queda activa.
       - name: Desplegar crear-invitacion
-        run: supabase functions deploy crear-invitacion --project-ref "$SUPABASE_PROJECT_REF"
+        run: supabase functions deploy crear-invitacion --project-ref "$SUPABASE_PROJECT_REF" --yes
       # Crea usuarios y empresas con la clave del servidor; valida el JWT y los permisos dentro de la función.
       - name: Desplegar administrar
-        run: supabase functions deploy administrar --project-ref "$SUPABASE_PROJECT_REF"
+        run: supabase functions deploy administrar --project-ref "$SUPABASE_PROJECT_REF" --yes
