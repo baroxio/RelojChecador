@@ -1508,6 +1508,25 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       return h("li", {}, fila, detalle);
     }
 
+    // Botón de dos pasos (clic y "Confirmar"). Si hay historial que depende del registro (FK), avisa en vez de borrar.
+    function botonEliminar(texto, accion, textoConHistorial) {
+      let confirmando = false; let temporizador;
+      const b = h("button", { class: "boton boton--peligro boton--chico", type: "button",
+        onclick: async () => {
+          if (!confirmando) {
+            confirmando = true; b.textContent = "Confirmar: se borra para siempre";
+            temporizador = setTimeout(() => { confirmando = false; b.textContent = texto; }, 5000); return;
+          }
+          clearTimeout(temporizador); b.disabled = true;
+          try { await accion(); }
+          catch (err) {
+            avisar(err?.code === "23503" ? textoConHistorial : mensajeDeError(err), "error");
+            confirmando = false; b.textContent = texto; b.disabled = false;
+          }
+        } }, texto);
+      return b;
+    }
+
     function selectorZona(valor, idCampo) {
       return h("select", { class: "entrada", id: idCampo }, ZONAS_HORARIAS_MX.map(([v, t]) => h("option", { value: v, selected: v === valor }, t)));
     }
@@ -1533,13 +1552,17 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           try { await q(sb.from("sedes").update({ activa: !s.activa }).eq("id", s.id)); avisar(s.activa ? "Sede desactivada." : "Sede reactivada."); await cargar(); }
           catch (err) { avisar(mensajeDeError(err), "error"); alterna.disabled = false; }
         } }, s.activa ? "Desactivar sede" : "Reactivar sede");
+      const eliminar = botonEliminar("Eliminar sede", async () => {
+        await q(sb.from("sedes").delete().eq("id", s.id));
+        avisar("Sede eliminada."); await cargar();
+      }, "Esta sede tiene empleados o registros y no se puede eliminar. Mejor usa «Desactivar sede»: se conserva el historial.");
       const zonaGeo = h("div", {});
       cuerpo.replaceChildren(h("div", { style: "display:grid; gap:.75rem; padding-top:.75rem" },
         h("div", { class: "cuadricula cuadricula--2" },
           h("div", { class: "campo" }, h("label", { for: `sn-${s.id}` }, "Nombre"), nombre),
           h("div", { class: "campo" }, h("label", { for: `sdir-${s.id}` }, "Dirección (opcional)"), direccion)),
         h("div", { class: "campo", style: "max-width:26rem" }, h("label", { for: `sz-${s.id}` }, "Zona horaria"), zonaH),
-        h("div", { class: "formulario__acciones" }, guardar, alterna),
+        h("div", { class: "formulario__acciones" }, guardar, alterna, eliminar),
         h("h3", { class: "seccion" }, "Geocercas"), zonaGeo));
       pintarGeocercas(s, propias, zonaGeo);
     }
@@ -1563,7 +1586,11 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         h("span", { class: "fila__fin" },
           !g.activa && h("span", { class: "chip chip--baja" }, "Inactiva"),
           h("a", { class: "boton boton--secundario boton--chico", href: enlaceMapa(g.lat, g.lng), target: "_blank", rel: "noopener noreferrer" }, "Ver mapa"),
-          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioGeocerca({ id: g.sede_id }, g, espacio) }, "Editar")));
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioGeocerca({ id: g.sede_id }, g, espacio) }, "Editar"),
+          botonEliminar("Eliminar", async () => {
+            await q(sb.from("geocercas").delete().eq("id", g.id));
+            avisar("Geocerca eliminada."); await cargar();
+          }, "Esta geocerca ya se usó en registros y no se puede eliminar. Edítala y desmarca «Activa» para dejarla fuera de uso.")));
     }
 
     function formularioGeocerca(s, g, espacio) {
