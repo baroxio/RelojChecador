@@ -1,3 +1,5 @@
+> Para la vista actual (NAS, Cloudflare, número real) mira [`documentacion-sistema.md`](documentacion-sistema.md) y el [mapa de tecnologías](img/mapa-tecnologias.svg). Los mapas de abajo son del diseño inicial y siguen mostrando GitHub Pages.
+
 # Mapa del sistema
 
 ![Mapa del sistema RelojChecador](img/mapa-del-sistema.png)

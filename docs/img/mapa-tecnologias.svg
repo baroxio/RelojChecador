@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<title>Mapa de tecnologías de RelojChecador</title>
+<defs><marker id="m1a7f4b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f4b"/></marker><marker id="m2457c5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2457c5"/></marker><marker id="mc25b00" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c25b00"/></marker><marker id="m6b3fb5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b3fb5"/></marker><marker id="m6b7599" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7599"/></marker></defs>
+<rect width="1600" height="1020" fill="#f7f8fc"/>
+<text x="40" y="48" font-size="26" font-weight="700" fill="#101b3b">RelojChecador · mapa de tecnologías</text>
+<text x="40" y="74" font-size="14" fill="#55607f">Control de asistencia por WhatsApp para empresas mexicanas · actualizado 2026-11-13</text>
+<rect x="30" y="100" width="300" height="860" rx="14" fill="#1a7f4b" fill-opacity="0.08" stroke="#1a7f4b" stroke-opacity="0.35"/>
+<text x="46" y="126" font-size="14" font-weight="700" fill="#1a7f4b" letter-spacing="1">PERSONAS Y DISPOSITIVOS</text>
+<rect x="380" y="100" width="330" height="860" rx="14" fill="#c25b00" fill-opacity="0.08" stroke="#c25b00" stroke-opacity="0.35"/>
+<text x="396" y="126" font-size="14" font-weight="700" fill="#c25b00" letter-spacing="1">INTERNET (SERVICIOS DE TERCEROS)</text>
+<rect x="760" y="100" width="500" height="860" rx="14" fill="#2457c5" fill-opacity="0.08" stroke="#2457c5" stroke-opacity="0.35"/>
+<text x="776" y="126" font-size="14" font-weight="700" fill="#2457c5" letter-spacing="1">SUPABASE (NUBE) · proyecto bclmvyifdxalnfxzjmyj</text>
+<rect x="1310" y="100" width="260" height="860" rx="14" fill="#6b3fb5" fill-opacity="0.08" stroke="#6b3fb5" stroke-opacity="0.35"/>
+<text x="1326" y="126" font-size="14" font-weight="700" fill="#6b3fb5" letter-spacing="1">NAS SYNOLOGY (TU CASA/OFICINA)</text>
+<rect x="50" y="150" width="260" height="100" rx="9" fill="#fff" stroke="#1a7f4b" stroke-width="1.6"/>
+<text x="62" y="174" font-size="14.5" font-weight="700" fill="#101b3b">Empleado</text>
+<text x="62" y="194" font-size="12.2" fill="#55607f">App WhatsApp (iOS / Android)</text>
+<text x="62" y="211" font-size="12.2" fill="#55607f">Entrada · salida · pausa · menú</text>
+<text x="62" y="228" font-size="12.2" fill="#55607f">Comparte ubicación + selfie</text>
+<rect x="50" y="290" width="260" height="110" rx="9" fill="#fff" stroke="#1a7f4b" stroke-width="1.6"/>
+<text x="62" y="314" font-size="14.5" font-weight="700" fill="#101b3b">Dueño / admin / supervisor</text>
+<text x="62" y="334" font-size="12.2" fill="#55607f">Panel web instalable (PWA)</text>
+<text x="62" y="351" font-size="12.2" fill="#55607f">Chrome / Safari / Edge</text>
+<text x="62" y="368" font-size="12.2" fill="#55607f">HTML + CSS + JavaScript puro</text>
+<text x="62" y="385" font-size="12.2" fill="#55607f">sin framework ni compilación</text>
+<rect x="50" y="440" width="260" height="90" rx="9" fill="#fff" stroke="#1a7f4b" stroke-width="1.6"/>
+<text x="62" y="464" font-size="14.5" font-weight="700" fill="#101b3b">Plataforma (tú)</text>
+<text x="62" y="484" font-size="12.2" fill="#55607f">Crea empresas y dueños</text>
+<text x="62" y="501" font-size="12.2" fill="#55607f">Rol administrador de plataforma</text>
+<rect x="50" y="570" width="260" height="110" rx="9" fill="#fff" stroke="#1a7f4b" stroke-width="1.6"/>
+<text x="62" y="594" font-size="14.5" font-weight="700" fill="#101b3b">Desarrollo</text>
+<text x="62" y="614" font-size="12.2" fill="#55607f">Git + GitHub (baroxio/RelojChecador)</text>
+<text x="62" y="631" font-size="12.2" fill="#55607f">Node.js 24: pruebas node:test</text>
+<text x="62" y="648" font-size="12.2" fill="#55607f">Supabase CLI 3.x</text>
+<text x="62" y="665" font-size="12.2" fill="#55607f">Claude Code</text>
+<rect x="400" y="150" width="290" height="115" rx="9" fill="#fff" stroke="#c25b00" stroke-width="1.6"/>
+<text x="412" y="174" font-size="14.5" font-weight="700" fill="#101b3b">Meta · WhatsApp Cloud API</text>
+<text x="412" y="194" font-size="12.2" fill="#55607f">Graph API · webhook firmado HMAC</text>
+<text x="412" y="211" font-size="12.2" fill="#55607f">Número real +52 81 4252 0438</text>
+<text x="412" y="228" font-size="12.2" fill="#55607f">Mensajes de servicio gratis (24 h)</text>
+<text x="412" y="245" font-size="12.2" fill="#55607f">Plantillas de pago (opcional)</text>
+<rect x="400" y="300" width="290" height="95" rx="9" fill="#fff" stroke="#c25b00" stroke-width="1.6"/>
+<text x="412" y="324" font-size="14.5" font-weight="700" fill="#101b3b">Cloudflare</text>
+<text x="412" y="344" font-size="12.2" fill="#55607f">DNS checador.moba.mx + TLS (HTTPS)</text>
+<text x="412" y="361" font-size="12.2" fill="#55607f">Cloudflare Tunnel (moba-tunnel)</text>
+<text x="412" y="378" font-size="12.2" fill="#55607f">sin abrir puertos en el router</text>
+<rect x="400" y="430" width="290" height="80" rx="9" fill="#fff" stroke="#c25b00" stroke-width="1.6"/>
+<text x="412" y="454" font-size="14.5" font-weight="700" fill="#101b3b">GitHub</text>
+<text x="412" y="474" font-size="12.2" fill="#55607f">Repositorio público + Actions</text>
+<text x="412" y="491" font-size="12.2" fill="#55607f">Despliega las Edge Functions</text>
+<text x="412" y="508" font-size="12.2" fill="#55607f">Pages: sitio de respaldo del panel</text>
+<rect x="400" y="545" width="290" height="70" rx="9" fill="#fff" stroke="#c25b00" stroke-width="1.6"/>
+<text x="412" y="569" font-size="14.5" font-weight="700" fill="#101b3b">OpenStreetMap / Google Maps</text>
+<text x="412" y="589" font-size="12.2" fill="#55607f">Enlace «Ver mapa» de cada geocerca</text>
+<rect x="780" y="150" width="460" height="150" rx="9" fill="#fff" stroke="#2457c5" stroke-width="1.6"/>
+<text x="792" y="174" font-size="14.5" font-weight="700" fill="#101b3b">Edge Functions (Deno + TypeScript)</text>
+<text x="792" y="194" font-size="12.2" fill="#55607f">whatsapp-webhook  · recibe a Meta, valida firma, guarda y responde</text>
+<text x="792" y="211" font-size="12.2" fill="#55607f">crear-invitacion  · código ALTA, enlace wa.me, aviso opcional</text>
+<text x="792" y="228" font-size="12.2" fill="#55607f">administrar  · usuarios, empresas, roles (clave de servicio)</text>
+<text x="792" y="245" font-size="12.2" fill="#55607f">_shared  · lógica pura con pruebas · supabase-js 2</text>
+<rect x="1330" y="150" width="220" height="150" rx="9" fill="#fff" stroke="#6b3fb5" stroke-width="1.6"/>
+<text x="1342" y="174" font-size="14.5" font-weight="700" fill="#101b3b">Contenedor Docker</text>
+<text x="1342" y="194" font-size="12.2" fill="#55607f">nginx 1.27-alpine</text>
+<text x="1342" y="211" font-size="12.2" fill="#55607f">sirve docs/ (solo lectura)</text>
+<text x="1342" y="228" font-size="12.2" fill="#55607f">puerto 8095 · GET/HEAD</text>
+<text x="1342" y="245" font-size="12.2" fill="#55607f">Panel: /panel/</text>
+<rect x="1330" y="335" width="220" height="130" rx="9" fill="#fff" stroke="#6b3fb5" stroke-width="1.6"/>
+<text x="1342" y="359" font-size="14.5" font-weight="700" fill="#101b3b">Respaldo diario</text>
+<text x="1342" y="379" font-size="12.2" fill="#55607f">respaldar.sh (pg_dump)</text>
+<text x="1342" y="396" font-size="12.2" fill="#55607f">+ copia S3 de selfies</text>
+<text x="1342" y="413" font-size="12.2" fill="#55607f">30 días + 12 meses</text>
+<text x="1342" y="430" font-size="12.2" fill="#55607f">por instalar</text>
+<rect x="1330" y="500" width="220" height="90" rx="9" fill="#fff" stroke="#6b3fb5" stroke-width="1.6"/>
+<text x="1342" y="524" font-size="14.5" font-weight="700" fill="#101b3b">git pull</text>
+<text x="1342" y="544" font-size="12.2" fill="#55607f">Actualiza el panel sin</text>
+<text x="1342" y="561" font-size="12.2" fill="#55607f">reiniciar el contenedor</text>
+<rect x="780" y="330" width="460" height="160" rx="9" fill="#fff" stroke="#2457c5" stroke-width="1.6"/>
+<text x="792" y="354" font-size="14.5" font-weight="700" fill="#101b3b">PostgreSQL (RLS por empresa y sede)</text>
+<text x="792" y="374" font-size="12.2" fill="#55607f">empresas · sedes · geocercas · miembros · horarios</text>
+<text x="792" y="391" font-size="12.2" fill="#55607f">empleados · vinculos_whatsapp · invitaciones · consentimientos</text>
+<text x="792" y="408" font-size="12.2" fill="#55607f">sesiones_registro · registros (inmutable) · correcciones</text>
+<text x="792" y="425" font-size="12.2" fill="#55607f">mensajes_whatsapp (bitácora cruda) · medios · bitacora</text>
+<text x="792" y="442" font-size="12.2" fill="#55607f">vista registros_efectivos · distancia a geocerca (haversine)</text>
+<text x="792" y="459" font-size="12.2" fill="#55607f">Llaves foráneas compuestas (id, empresa_id)</text>
+<rect x="780" y="525" width="220" height="100" rx="9" fill="#fff" stroke="#2457c5" stroke-width="1.6"/>
+<text x="792" y="549" font-size="14.5" font-weight="700" fill="#101b3b">Storage</text>
+<text x="792" y="569" font-size="12.2" fill="#55607f">Bucket privado «selfies»</text>
+<text x="792" y="586" font-size="12.2" fill="#55607f">URL firmada · sha256 + phash</text>
+<rect x="1020" y="525" width="220" height="100" rx="9" fill="#fff" stroke="#2457c5" stroke-width="1.6"/>
+<text x="1032" y="549" font-size="14.5" font-weight="700" fill="#101b3b">Secretos de funciones</text>
+<text x="1032" y="569" font-size="12.2" fill="#55607f">WHATSAPP_TOKEN · APP_SECRET</text>
+<text x="1032" y="586" font-size="12.2" fill="#55607f">VERIFY_TOKEN · PLANTILLA_ALTA</text>
+<rect x="780" y="660" width="220" height="100" rx="9" fill="#fff" stroke="#2457c5" stroke-width="1.6"/>
+<text x="792" y="684" font-size="14.5" font-weight="700" fill="#101b3b">Auth</text>
+<text x="792" y="704" font-size="12.2" fill="#55607f">Correo + contraseña</text>
+<text x="792" y="721" font-size="12.2" fill="#55607f">JWT de sesión</text>
+<text x="792" y="738" font-size="12.2" fill="#55607f">Usuarios del panel</text>
+<rect x="1020" y="660" width="220" height="100" rx="9" fill="#fff" stroke="#2457c5" stroke-width="1.6"/>
+<text x="1032" y="684" font-size="14.5" font-weight="700" fill="#101b3b">API REST (PostgREST)</text>
+<text x="1032" y="704" font-size="12.2" fill="#55607f">supabase-js desde el panel</text>
+<text x="1032" y="721" font-size="12.2" fill="#55607f">Permisos por RLS, no por app</text>
+<path d="M310,200 H400" stroke="#1a7f4b" stroke-width="2" fill="none" marker-end="url(#m1a7f4b)"/>
+
+<text x="355" y="190" font-size="11.5" fill="#1a7f4b" text-anchor="middle" font-weight="600">chat</text>
+<path d="M690,200 H780" stroke="#c25b00" stroke-width="2" fill="none" marker-end="url(#mc25b00)"/>
+<text x="735" y="190" font-size="11.5" fill="#c25b00" text-anchor="middle" font-weight="600">webhook</text>
+<path d="M780,260 H690" stroke="#2457c5" stroke-width="2" fill="none" marker-end="url(#m2457c5)"/>
+<text x="735" y="276" font-size="11.5" fill="#2457c5" text-anchor="middle" font-weight="600">envía</text>
+<path d="M310,345 H400" stroke="#1a7f4b" stroke-width="2" fill="none" marker-end="url(#m1a7f4b)"/>
+<text x="355" y="336" font-size="11.5" fill="#1a7f4b" text-anchor="middle" font-weight="600">HTTPS</text>
+<path d="M400,365 H355 V92 H1440 V150" stroke="#c25b00" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#mc25b00)"/>
+<text x="900" y="87" font-size="11.5" fill="#c25b00" text-anchor="middle" font-weight="600">túnel de Cloudflare → NAS :8095</text>
+<path d="M310,370 H337 V710 H780" stroke="#1a7f4b" stroke-width="2" fill="none" marker-end="url(#m1a7f4b)"/>
+<text x="562" y="702" font-size="11.5" fill="#1a7f4b" text-anchor="middle" font-weight="600">inicio de sesión + datos (JWT)</text>
+<path d="M890,300 V330" stroke="#2457c5" stroke-width="2" fill="none" marker-end="url(#m2457c5)"/>
+<path d="M1240,410 H1330" stroke="#6b3fb5" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#m6b3fb5)"/>
+<text x="1285" y="400" font-size="11.5" fill="#6b3fb5" text-anchor="middle" font-weight="600">pg_dump</text>
+<path d="M310,625 H345 V480 H400" stroke="#6b3fb5" stroke-width="2" fill="none" marker-end="url(#m6b3fb5)"/>
+<text x="372" y="615" font-size="11.5" fill="#6b3fb5" text-anchor="middle" font-weight="600">git push</text>
+<path d="M690,470 H735 V285 H780" stroke="#6b3fb5" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#m6b3fb5)"/>
+<rect x="30" y="975" width="1540" height="30" rx="8" fill="#fff" stroke="#d6dbea"/>
+<text x="46" y="995" font-size="12.5" fill="#55607f">Línea sólida = tráfico en uso · punteada = camino de apoyo (túnel, respaldo, despliegue). Los secretos nunca están en el código: viven en Supabase.</text>
+</svg>
