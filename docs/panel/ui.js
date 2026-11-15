@@ -1,7 +1,7 @@
 // Interfaz del panel. Todo texto que viene de la base se inserta con textContent (nunca innerHTML),
 // y el único innerHTML es el de los iconos, que son constantes de este archivo.
 import {
-  ETIQUETAS_TIPO, ORDEN_GRUPOS, TIPO_CORTO, TITULO_GRUPO, aUTCdesdeLocal, contarGrupos, enlaceMapa,
+  ETIQUETAS_TIPO, ORDEN_GRUPOS, agruparPorDia, armarHistorial, TIPO_CORTO, TITULO_GRUPO, aUTCdesdeLocal, contarGrupos, enlaceMapa,
   enlaceMensajeEmpleado, etiquetaSenal, fechaLocal, formatearDistancia, formatearDuracion,
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
@@ -16,6 +16,7 @@ const SVG = (d, relleno = false) =>
 const ICONOS = {
   hoy: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   equipo: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.6c2.4.2 4 1.9 4 4.4"/>'),
+  historial: SVG('<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/>'),
   correcciones: SVG('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19z"/><path d="M14 7l3 3"/>'),
   reportes: SVG('<path d="M5 20V10M12 20V4M19 20v-7"/>'),
   mas: SVG('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', true),
@@ -244,7 +245,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
 
   function construirEstructura() {
     const enlaces = [];
-    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["correcciones", "Correcciones", "#/correcciones"], ["reportes", "Reportes", "#/reportes"]);
+    if (estado.miembro) enlaces.push(["hoy", "Hoy", "#/hoy"], ["equipo", "Equipo", "#/equipo"], ["historial", "Historial", "#/historial"], ["correcciones", "Correcciones", "#/correcciones"], ["reportes", "Reportes", "#/reportes"]);
     if (puedeAdministrar() || estado.plataforma) enlaces.push(["administrar", "Administrar", "#/administrar"]);
     enlaces.push(["usuario", "Cuenta", "#/cuenta"]);
     const nav = h("nav", { class: "nav", "aria-label": "Principal" }, enlaces.map(([id, texto, href]) =>
@@ -294,7 +295,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Rutas ----------
-  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, correcciones: vistaCorrecciones, reportes: vistaReportes, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, historial: vistaHistorial, correcciones: vistaCorrecciones, reportes: vistaReportes, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
 
   function rutear() {
     clearInterval(temporizador);
@@ -689,7 +690,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const acciones = h("div", { class: "formulario__acciones" },
         ultimoConMapa && h("a", { class: "boton boton--secundario boton--chico", target: "_blank", rel: "noopener noreferrer",
           href: enlaceMapa(porId[ultimoConMapa.fuente_id].lat, porId[ultimoConMapa.fuente_id].lng) }, icono("mapa"), "Ver ubicación"),
-        puedeResolver() && h("a", { class: "boton boton--secundario boton--chico", href: `#/correcciones?empleado=${encodeURIComponent(f.empleado.id)}` }, icono("correcciones"), "Pedir corrección"));
+        h("a", { class: "boton boton--secundario boton--chico", href: `#/historial?empleado=${encodeURIComponent(f.empleado.id)}` }, icono("historial"), puedeResolver() ? "Historial y correcciones" : "Ver historial"));
       contenido.push(acciones);
       cuerpo.replaceChildren(h("div", { class: "detalle__grid" },
         h("div", { class: "detalle__selfie" }, botonSelfie, visor),
@@ -775,14 +776,15 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     }
 
     function pintarAcciones(e, cuerpo) {
+      const verHistorial = h("a", { class: "boton boton--secundario boton--chico", href: `#/historial?empleado=${encodeURIComponent(e.id)}` }, icono("historial"), "Historial");
       const zonaInvitacion = h("div", {});
       const acciones = h("div", { class: "formulario__acciones", style: "margin-top:.75rem" });
       if (e.estado === "baja") {
-        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Este empleado está dado de baja. Su historial se conserva."));
+        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Este empleado está dado de baja. Su historial se conserva."), h("div", { class: "formulario__acciones" }, verHistorial));
         return;
       }
       if (!puedeAdministrar()) {
-        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Solo el dueño o un administrador pueden invitar o dar de baja."));
+        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Solo el dueño o un administrador pueden invitar o dar de baja."), h("div", { class: "formulario__acciones" }, verHistorial));
         return;
       }
       const invitar = h("button", { class: "boton boton--primario boton--chico", type: "button",
@@ -805,7 +807,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         } }, "Dar de baja");
       const zonaEdicion = h("div", {});
       const editar = h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => mostrarEdicion(e, zonaEdicion) }, "Editar datos");
-      acciones.append(invitar, editar, baja);
+      acciones.append(invitar, editar, verHistorial, baja);
       const zonaHorario = h("div", { style: "margin-top:.75rem" }, h("p", { class: "nota" }, "Cargando horario…"));
       cuerpo.replaceChildren(zonaHorario, acciones, zonaEdicion, zonaInvitacion);
       pintarHorarioEmpleado(e, zonaHorario);
@@ -1170,6 +1172,217 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     await cargar();
     const pre = ctx.parametros?.get("empleado");
     if (pre && puedeResolver()) mostrarFormulario(pre);
+  }
+
+  // ---------- Historial de un trabajador ----------
+  // Muestra todos los registros de un empleado y permite corregirlos (cambiar hora o tipo, anular o agregar
+  // uno olvidado). Los registros originales nunca se tocan: cada cambio es una corrección con motivo que se
+  // aprueba al momento, y el original y la traza quedan guardados.
+  async function vistaHistorial(cont, ctx) {
+    const puedeCorregir = puedeResolver();
+    let empleados = [];
+    let empleadoId = ctx.parametros?.get("empleado") ?? "";
+    const selEmp = h("select", { class: "entrada", id: "h-emp", "aria-label": "Trabajador" });
+    const desdeIn = h("input", { class: "entrada", type: "date", id: "h-desde", "aria-label": "Desde" });
+    const hastaIn = h("input", { class: "entrada", type: "date", id: "h-hasta", "aria-label": "Hasta" });
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    const agregarBoton = puedeCorregir
+      ? h("button", { class: "boton boton--primario", type: "button", onclick: () => formularioAgregar() }, icono("agregar"), "Agregar registro")
+      : null;
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Historial"), h("p", {}, "Todos los registros de un trabajador, con sus correcciones")),
+        h("div", { class: "cabecera__acciones" }, agregarBoton)),
+      h("div", { class: "formulario", style: "margin-bottom:.75rem" },
+        h("div", { class: "campo" }, h("label", { for: "h-emp" }, "Trabajador"), selEmp),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "h-desde" }, "Desde"), desdeIn),
+          h("div", { class: "campo" }, h("label", { for: "h-hasta" }, "Hasta"), hastaIn))),
+      espacioForm, lista);
+
+    const empleadoActual = () => empleados.find((e) => e.id === empleadoId);
+    const tzActual = () => tzPorSede()[empleadoActual()?.sede_id] ?? "America/Mexico_City";
+
+    async function cargar() {
+      espacioForm.replaceChildren();
+      if (!empleadoId || !empleadoActual()) {
+        lista.replaceChildren(h("div", { class: "vacio" }, h("p", {}, "Elige un trabajador para ver su historial.")));
+        return;
+      }
+      if (!desdeIn.value || !hastaIn.value || desdeIn.value > hastaIn.value) {
+        lista.replaceChildren(h("div", { class: "vacio" }, h("p", {}, "Revisa las fechas: «Desde» no puede ser posterior a «Hasta».")));
+        return;
+      }
+      lista.replaceChildren(esqueletos(4));
+      const tz = tzActual();
+      const ini = aUTCdesdeLocal(desdeIn.value, "00:00", tz).toISOString();
+      const fin = aUTCdesdeLocal(sumarDias(hastaIn.value, 1), "00:00", tz).toISOString();
+      try {
+        const [registros, todas] = await Promise.all([
+          q(sb.from("registros").select("id,tipo,ocurrido_at,canal,dentro_geocerca,senales").eq("empleado_id", empleadoId).gte("ocurrido_at", ini).lt("ocurrido_at", fin).order("ocurrido_at", { ascending: false }).limit(500)),
+          q(sb.from("correcciones").select("id,registro_id,tipo,nuevo_tipo,nueva_hora,motivo,origen,estado,creada_at,resuelto_at,comentario_resolucion").eq("empleado_id", empleadoId).order("creada_at", { ascending: false }).limit(500)),
+        ]);
+        if (!ctx.vigente()) return;
+        const ids = new Set(registros.map((r) => r.id));
+        const correcciones = todas.filter((c) => (c.registro_id ? ids.has(c.registro_id) : (c.nueva_hora >= ini && c.nueva_hora < fin)));
+        pintar(armarHistorial(registros, correcciones), tz);
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function pintar(items, tz) {
+      if (!items.length) {
+        lista.replaceChildren(h("div", { class: "vacio" },
+          h("h2", {}, "Sin registros en estas fechas"),
+          h("p", {}, "Cambia el rango o agrega un registro olvidado.")));
+        return;
+      }
+      const resumen = `${items.length} ${items.length === 1 ? "registro" : "registros"}`;
+      lista.replaceChildren(
+        h("p", { class: "nota" }, `${empleadoActual().nombre} · ${resumen}`),
+        ...agruparPorDia(items, tz).map((g) => h("section", { class: "grupo" },
+          h("div", { class: "grupo__titulo" }, h("h2", {}, fechaLarga(new Date(`${g.fecha}T12:00:00Z`), "UTC")), h("span", { class: "grupo__cuenta" }, String(g.items.length))),
+          h("ul", { class: "lista" }, [...g.items].reverse().map((it) => filaRegistro(it, tz))))));
+    }
+
+    function filaRegistro(it, tz) {
+      const anulado = it.estado === "anulado";
+      const meta = [CANALES[it.canal] ?? it.canal];
+      if (it.estado === "corregido") meta.push(`original: ${ETIQUETAS_TIPO[it.tipoOriginal]} ${horaLocal(new Date(it.horaOriginal), tz)}`);
+      if (it.dentro_geocerca === false) meta.push("fuera de la geocerca");
+      if (it.senales.length) meta.push(`${it.senales.length} ${it.senales.length === 1 ? "señal" : "señales"}`);
+      const motivos = it.correcciones.filter((c) => c.estado !== "pendiente" || it.origen === "agregado")
+        .map((c) => `${c.estado === "rechazada" ? "Rechazada: " : c.tipo === "anular" ? "Anulado: " : c.tipo === "agregar" ? "Agregado a mano: " : "Corregido: "}${c.motivo}`);
+      const detalle = h("div", {});
+      const acciones = puedeCorregir && it.origen === "registro" && !anulado && !it.pendiente
+        ? h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioCorregir(it, tz, detalle) }, icono("correcciones"), "Corregir")
+        : null;
+      return h("li", { style: "padding:.7rem .9rem; display:grid; gap:.45rem" },
+        h("div", { style: "display:flex; gap:.6rem; align-items:center; flex-wrap:wrap" },
+          h("span", { style: anulado ? "text-decoration:line-through; opacity:.6" : "" },
+            sello(it.tipo, horaLocal(new Date(it.hora), tz), { corregido: it.estado === "corregido" || it.origen === "agregado" })),
+          h("span", { class: "meta", style: "flex:1; min-width:8rem" }, [ETIQUETAS_TIPO[it.tipo], ...meta].filter(Boolean).join(" · ")),
+          anulado && h("span", { class: "chip chip--rojo" }, "Anulado"),
+          it.estado === "agregado" && h("span", { class: "chip" }, "Agregado a mano"),
+          (it.pendiente || it.estado === "agregado_pendiente") && h("span", { class: "chip chip--aviso" }, "Corrección pendiente"),
+          acciones),
+        ...motivos.map((m) => h("div", { class: "fila__sub", style: "white-space:normal" }, m)),
+        detalle);
+    }
+
+    // Aplica una corrección al momento: se registra con su motivo y se aprueba con la sesión de quien la hace.
+    async function aplicar(carga) {
+      const nueva = await q(sb.from("correcciones").insert({
+        empresa_id: estado.miembro.empresa_id, empleado_id: empleadoId, estado: "pendiente",
+        origen: estado.miembro.rol === "supervisor" ? "supervisor" : "admin", solicitada_por: estado.sesion.user.id, ...carga,
+      }).select("id").single());
+      try {
+        await q(sb.rpc("resolver_correccion", { p_id: nueva.id, p_aprobar: true, p_comentario: "Aplicada directamente desde el historial" }));
+      } catch (err) {
+        await actualizarPendientes();
+        throw new Error(`El cambio se guardó pero quedó pendiente de aprobar en Correcciones (${mensajeDeError(err)}).`);
+      }
+      await actualizarPendientes();
+    }
+
+    function formularioCorregir(it, tz, zona) {
+      if (zona.firstChild) { zona.replaceChildren(); return; }
+      const id = `hc-${it.id}`;
+      const tipo = h("select", { class: "entrada", id: `${id}-tipo` }, Object.entries(ETIQUETAS_TIPO).map(([v, t]) => h("option", { value: v, selected: v === it.tipo }, t)));
+      const fecha = h("input", { class: "entrada", id: `${id}-fecha`, type: "date", value: fechaLocal(new Date(it.hora), tz) });
+      const hora = h("input", { class: "entrada", id: `${id}-hora`, type: "time", value: horaLocal(new Date(it.hora), tz) });
+      const motivo = h("textarea", { class: "entrada", id: `${id}-motivo`, maxlength: "300", placeholder: "Por ejemplo: checó a las 8:05 pero el teléfono tardó en enviarlo" });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const falla = (t) => { error.textContent = t; error.hidden = false; };
+      const guardar = h("button", { class: "boton boton--primario boton--chico", type: "submit" }, "Guardar cambio");
+      let confirmando = false;
+      const anular = h("button", { class: "boton boton--peligro boton--chico", type: "button" }, "Anular registro");
+      const ocupado = (v) => { guardar.disabled = anular.disabled = v; guardar.toggleAttribute("aria-busy", v); };
+      async function enviar(carga, mensaje) {
+        error.hidden = true; ocupado(true);
+        try { await aplicar({ registro_id: it.id, ...carga, motivo: motivo.value.trim() }); avisar(mensaje); await cargar(); }
+        catch (err) { falla(err?.code === "23505" ? "Este registro ya tiene una corrección pendiente: resuélvela primero en Correcciones." : mensajeDeError(err)); ocupado(false); }
+      }
+      const motivoValido = () => { if (motivo.value.trim().length < 5) { falla("Escribe el motivo (al menos unas palabras)."); return false; } return true; };
+      anular.addEventListener("click", () => {
+        error.hidden = true;
+        if (!motivoValido()) return;
+        if (!confirmando) { confirmando = true; anular.textContent = "Confirmar: se anula el registro"; setTimeout(() => { confirmando = false; anular.textContent = "Anular registro"; }, 5000); return; }
+        enviar({ tipo: "anular" }, "Registro anulado. El original se conserva.");
+      });
+      const form = h("form", { class: "formulario", novalidate: true,
+        onsubmit: (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          if (!fecha.value || !hora.value) return falla("Escribe la fecha y la hora correctas.");
+          const nueva = aUTCdesdeLocal(fecha.value, hora.value, tz);
+          if (nueva.getTime() > Date.now() + 5 * 60_000) return falla("La hora no puede estar en el futuro.");
+          const mismaHora = fecha.value === fechaLocal(new Date(it.hora), tz) && hora.value === horaLocal(new Date(it.hora), tz) && tipo.value === it.tipo;
+          if (mismaHora) return falla("No cambiaste ni la hora ni el tipo.");
+          if (!motivoValido()) return;
+          enviar({ tipo: "modificar_hora", nueva_hora: nueva.toISOString(), nuevo_tipo: tipo.value === it.tipoOriginal ? null : tipo.value }, "Registro corregido. El original se conserva.");
+        } },
+        h("h3", {}, "Corregir registro"),
+        h("div", { class: "campo" }, h("label", { for: `${id}-tipo` }, "Tipo de registro"), tipo),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: `${id}-fecha` }, "Fecha"), fecha),
+          h("div", { class: "campo" }, h("label", { for: `${id}-hora` }, "Hora correcta"), hora)),
+        h("div", { class: "campo" }, h("label", { for: `${id}-motivo` }, "Motivo"), motivo, h("small", {}, "Queda guardado con quién hizo el cambio. El registro original no se borra.")),
+        error,
+        h("div", { class: "formulario__acciones" }, guardar, anular,
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => zona.replaceChildren() }, "Cancelar")));
+      zona.replaceChildren(form);
+      motivo.focus();
+    }
+
+    function formularioAgregar() {
+      if (espacioForm.firstChild) { espacioForm.replaceChildren(); return; }
+      const tz = tzActual();
+      const tipo = h("select", { class: "entrada", id: "ha-tipo" }, Object.entries(ETIQUETAS_TIPO).map(([v, t]) => h("option", { value: v }, t)));
+      const fecha = h("input", { class: "entrada", id: "ha-fecha", type: "date", value: hastaIn.value });
+      const hora = h("input", { class: "entrada", id: "ha-hora", type: "time" });
+      const motivo = h("textarea", { class: "entrada", id: "ha-motivo", maxlength: "300", placeholder: "Por ejemplo: se le acabó la batería y no pudo checar" });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Agregar registro");
+      const form = h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const falla = (t) => { error.textContent = t; error.hidden = false; };
+          if (!fecha.value || !hora.value) return falla("Escribe la fecha y la hora.");
+          const nueva = aUTCdesdeLocal(fecha.value, hora.value, tz);
+          if (nueva.getTime() > Date.now() + 5 * 60_000) return falla("La hora no puede estar en el futuro.");
+          if (motivo.value.trim().length < 5) return falla("Escribe el motivo (al menos unas palabras).");
+          guardar.disabled = true; guardar.setAttribute("aria-busy", "true");
+          try {
+            await aplicar({ tipo: "agregar", registro_id: null, nuevo_tipo: tipo.value, nueva_hora: nueva.toISOString(), motivo: motivo.value.trim() });
+            avisar("Registro agregado.");
+            await cargar();
+          } catch (err) { falla(mensajeDeError(err)); guardar.disabled = false; guardar.removeAttribute("aria-busy"); }
+        } },
+        h("h2", {}, `Agregar un registro a ${empleadoActual().nombre}`),
+        h("div", { class: "campo" }, h("label", { for: "ha-tipo" }, "Tipo de registro"), tipo),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "ha-fecha" }, "Fecha"), fecha),
+          h("div", { class: "campo" }, h("label", { for: "ha-hora" }, "Hora"), hora)),
+        h("div", { class: "campo" }, h("label", { for: "ha-motivo" }, "Motivo"), motivo),
+        error,
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar")));
+      espacioForm.replaceChildren(form);
+      hora.focus();
+    }
+
+    try {
+      empleados = await q(sb.from("empleados").select("id,nombre,sede_id,estado").eq("empresa_id", eid()).order("nombre"));
+    } catch (err) { if (ctx.vigente()) cont.replaceChildren(bloqueError(err, () => vistaHistorial(cont, ctx))); return; }
+    if (!ctx.vigente()) return;
+    selEmp.replaceChildren(h("option", { value: "" }, "Elige un trabajador"),
+      ...empleados.map((e) => h("option", { value: e.id, selected: e.id === empleadoId }, e.estado === "baja" ? `${e.nombre} (baja)` : e.nombre)));
+    const hoy = fechaLocal(new Date(), tzActual());
+    hastaIn.value = hoy; desdeIn.value = sumarDias(hoy, -13);
+    selEmp.addEventListener("change", () => { empleadoId = selEmp.value; cargar(); });
+    desdeIn.addEventListener("change", cargar);
+    hastaIn.addEventListener("change", cargar);
+    await cargar();
   }
 
   // ---------- Administrar ----------

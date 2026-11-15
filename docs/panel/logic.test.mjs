@@ -7,7 +7,7 @@ import {
   normalizarTelefonoMx, parsearVigencia, resumenDelDia, etiquetaSenal, rolesAsignables, puedeGestionarRol,
   parsearCoordenadas, errorDeGeocerca, errorDeHorario, resumenHorario, planearCambioHorario,
   sumarDias, rangoDeFechas, periodoPredefinido, errorDePeriodo, armarJornadas, reporteAsistencia, totalesGenerales,
-  validarDatosEmpleado, diferenciasEmpleado, celdaCSV, aCSV, horasDecimales, formatearHoras, filasCSVDetalle, ENCABEZADOS_CSV_DETALLE,
+  armarHistorial, agruparPorDia, validarDatosEmpleado, diferenciasEmpleado, celdaCSV, aCSV, horasDecimales, formatearHoras, filasCSVDetalle, ENCABEZADOS_CSV_DETALLE,
 } from "./logic.js";
 
 const MX = "America/Mexico_City";
@@ -365,4 +365,48 @@ test("empleado: solo se actualiza lo que cambió", () => {
   assert.deepEqual(diferenciasEmpleado(actual, mismo), {});
   const cambio = validarDatosEmpleado({ nombre: "Ana L. Ruiz", telefono: "33 9999 0000", sede_id: "s2", num_empleado: "45", fecha_ingreso: "" }).valores;
   assert.deepEqual(diferenciasEmpleado(actual, cambio), { nombre: "Ana L. Ruiz", telefono: "+523399990000", sede_id: "s2", num_empleado: "45", fecha_ingreso: null });
+});
+
+test("historial: une registros y correcciones (corregido, anulado, pendiente, agregado)", () => {
+  const registros = [
+    { id: "r1", tipo: "entrada", ocurrido_at: "2026-11-10T14:00:00Z", canal: "whatsapp", senales: [] },
+    { id: "r2", tipo: "salida", ocurrido_at: "2026-11-10T23:00:00Z", canal: "whatsapp", senales: ["foto_repetida"] },
+    { id: "r3", tipo: "pausa_inicio", ocurrido_at: "2026-11-10T18:00:00Z", canal: "whatsapp", senales: [] },
+    { id: "r4", tipo: "entrada", ocurrido_at: "2026-11-11T14:00:00Z", canal: "whatsapp", senales: [] },
+  ];
+  const correcciones = [
+    { id: "c0", registro_id: "r1", tipo: "modificar_hora", nueva_hora: "2026-11-10T14:30:00Z", nuevo_tipo: null, estado: "aprobada", resuelto_at: "2026-11-10T20:00:00Z", creada_at: "2026-11-10T19:00:00Z" },
+    { id: "c1", registro_id: "r1", tipo: "modificar_hora", nueva_hora: "2026-11-10T14:10:00Z", nuevo_tipo: null, estado: "aprobada", resuelto_at: "2026-11-11T10:00:00Z", creada_at: "2026-11-11T09:00:00Z" },
+    { id: "c2", registro_id: "r2", tipo: "anular", estado: "aprobada", resuelto_at: "2026-11-11T10:00:00Z", creada_at: "2026-11-11T09:00:00Z" },
+    { id: "c3", registro_id: "r3", tipo: "modificar_hora", nueva_hora: "2026-11-10T18:30:00Z", nuevo_tipo: "pausa_fin", estado: "pendiente", creada_at: "2026-11-11T09:00:00Z" },
+    { id: "c4", registro_id: "r4", tipo: "modificar_hora", nueva_hora: "2026-11-11T13:00:00Z", nuevo_tipo: null, estado: "rechazada", resuelto_at: "2026-11-11T10:00:00Z", creada_at: "2026-11-11T09:00:00Z" },
+    { id: "c5", registro_id: null, tipo: "agregar", nuevo_tipo: "salida", nueva_hora: "2026-11-11T23:00:00Z", estado: "aprobada", creada_at: "2026-11-12T09:00:00Z", resuelto_at: "2026-11-12T09:00:00Z" },
+    { id: "c6", registro_id: null, tipo: "agregar", nuevo_tipo: "salida", nueva_hora: "2026-11-09T23:00:00Z", estado: "rechazada", creada_at: "2026-11-12T09:00:00Z", resuelto_at: "2026-11-12T09:00:00Z" },
+  ];
+  const h = armarHistorial(registros, correcciones);
+  const por = Object.fromEntries(h.map((x) => [x.id, x]));
+  assert.equal(h.length, 5, "los agregados rechazados no aparecen");
+  assert.equal(por.r1.estado, "corregido");
+  assert.equal(por.r1.hora, "2026-11-10T14:10:00Z", "gana la corrección aprobada más reciente");
+  assert.equal(por.r1.horaOriginal, "2026-11-10T14:00:00Z");
+  assert.equal(por.r2.estado, "anulado");
+  assert.equal(por.r3.estado, "normal");
+  assert.equal(por.r3.pendiente.id, "c3");
+  assert.equal(por.r3.tipo, "pausa_inicio", "una corrección pendiente aún no cambia nada");
+  assert.equal(por.r4.estado, "normal", "una corrección rechazada no cuenta");
+  assert.equal(por.c5.estado, "agregado");
+  assert.deepEqual(h.map((x) => x.id), ["c5", "r4", "r2", "r3", "r1"], "más reciente primero");
+  const aprobadaConTipo = armarHistorial([registros[2]], [{ ...correcciones[3], estado: "aprobada", resuelto_at: "2026-11-12T00:00:00Z" }])[0];
+  assert.equal(aprobadaConTipo.tipo, "pausa_fin");
+  assert.equal(aprobadaConTipo.tipoOriginal, "pausa_inicio");
+});
+
+test("historial: agrupa por día local, el más reciente primero", () => {
+  const items = [
+    { hora: "2026-11-11T05:30:00Z" }, // 10 nov 23:30 en México
+    { hora: "2026-11-11T15:00:00Z" },
+    { hora: "2026-11-10T15:00:00Z" },
+  ];
+  const g = agruparPorDia(items, "America/Mexico_City");
+  assert.deepEqual(g.map((x) => [x.fecha, x.items.length]), [["2026-11-11", 1], ["2026-11-10", 2]]);
 });

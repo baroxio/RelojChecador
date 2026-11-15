@@ -22,7 +22,7 @@ El mapa es [`img/mapa-tecnologias.svg`](img/mapa-tecnologias.svg) (se abre en cu
 | Base de datos | PostgreSQL de Supabase con RLS | Supabase | Empresas, sedes, geocercas, empleados, registros, correcciones, bitácora. |
 | Archivos | Supabase Storage (bucket privado `selfies`) | Supabase | Selfies de cada registro; URL firmada para verlas. |
 | Inicio de sesión | Supabase Auth (correo y contraseña, JWT) | Supabase | Usuarios del panel. |
-| Panel | HTML + CSS + JavaScript sin framework ni compilación; PWA (`manifest`, `sw.js`); `supabase-js` y `qrcode-generator` en `docs/panel/vendor` | NAS | Hoy, equipo, reportes, correcciones, lugares, horarios, usuarios. |
+| Panel | HTML + CSS + JavaScript sin framework ni compilación; PWA (`manifest`, `sw.js`); `supabase-js` y `qrcode-generator` en `docs/panel/vendor` | NAS | Hoy, equipo, historial por trabajador, reportes, correcciones, lugares, horarios, usuarios. |
 | Servidor del panel | nginx 1.27-alpine en Docker (solo lectura, solo GET/HEAD) | NAS Synology, puerto 8095 | Entrega los archivos estáticos de `docs/`. |
 | Acceso desde fuera | Cloudflare Tunnel (`moba-tunnel`) + DNS y TLS de Cloudflare | Cloudflare | `https://checador.moba.mx/panel/` sin abrir puertos del router. |
 | Código y despliegue | Git, GitHub (`baroxio/RelojChecador`), GitHub Actions, Supabase CLI | GitHub | Pruebas y despliegue de las funciones. |
@@ -53,7 +53,15 @@ Solo si existe el secreto `WHATSAPP_PLANTILLA_ALTA` la función además manda un
 ### 2.3 Panel
 Navegador → `checador.moba.mx` (Cloudflare) → nginx en el NAS → archivos estáticos. Después el navegador habla **directo con Supabase**: Auth para la sesión y la API REST con el JWT. Los permisos los aplica la base (RLS), no el NAS. Para crear usuarios, empresas o invitaciones llama a las Edge Functions.
 
-### 2.4 Despliegue
+### 2.4 Historial y corrección de registros
+En **Historial** se elige a un trabajador y un rango de fechas (por defecto, 14 días) y se ven todos sus registros agrupados por día, con el canal, las señales y las correcciones que ya tuvo. El dueño, el administrador y el supervisor (solo de sus sedes) pueden:
+- **Corregir** un registro: cambiar la hora, el tipo (por ejemplo, una salida que era fin de pausa) o ambos.
+- **Anular** un registro (dos pasos de confirmación).
+- **Agregar** un registro olvidado.
+
+Todo cambio pide un **motivo** y queda como una corrección ya aprobada, con quién la hizo (`solicitada_por` y `resuelto_por`). El registro original nunca se modifica ni se borra: se muestra como «original» y los reportes usan la hora corregida. Un registro anulado o agregado a mano no se puede deshacer desde el panel. Requiere la migración `20261115000100_corregir_tipo_de_registro.sql` para poder cambiar el tipo.
+
+### 2.5 Despliegue
 - **Panel:** `git pull` en el NAS. Se sube `VERSION` en `docs/panel/sw.js` para que los teléfonos actualicen la app.
 - **Funciones:** un push a `main` que toque `supabase/functions/**` corre las pruebas y despliega por GitHub Actions. A mano: `supabase functions deploy <nombre> --project-ref bclmvyifdxalnfxzjmyj --yes` (el webhook con `--no-verify-jwt`).
 - **Base de datos:** las migraciones de `supabase/migrations` se aplican a mano (SQL Editor o CLI).

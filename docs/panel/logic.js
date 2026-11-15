@@ -665,3 +665,58 @@ export function diferenciasEmpleado(actual, valores) {
   }
   return diff;
 }
+
+// --- Historial de un trabajador --------------------------------------------
+
+/**
+ * Une los registros originales con sus correcciones para mostrar el historial completo de un trabajador.
+ * Cada elemento trae el estado: normal, corregido, anulado, o con una corrección pendiente.
+ * `correcciones` puede incluir las de otros registros: aquí solo se usan las que corresponden.
+ */
+export function armarHistorial(registros, correcciones) {
+  const porRegistro = new Map();
+  for (const c of correcciones) {
+    if (!c.registro_id) continue;
+    if (!porRegistro.has(c.registro_id)) porRegistro.set(c.registro_id, []);
+    porRegistro.get(c.registro_id).push(c);
+  }
+  const items = registros.map((r) => {
+    const cs = porRegistro.get(r.id) ?? [];
+    const aprobadas = cs.filter((c) => c.estado === "aprobada");
+    const anulado = aprobadas.some((c) => c.tipo === "anular");
+    const cambios = aprobadas.filter((c) => c.tipo === "modificar_hora")
+      .sort((a, b) => String(b.resuelto_at).localeCompare(String(a.resuelto_at)));
+    const ultimo = cambios[0] ?? null;
+    return {
+      origen: "registro", id: r.id, canal: r.canal, dentro_geocerca: r.dentro_geocerca, senales: r.senales ?? [],
+      tipoOriginal: r.tipo, horaOriginal: r.ocurrido_at,
+      tipo: ultimo?.nuevo_tipo ?? r.tipo,
+      hora: ultimo?.nueva_hora ?? r.ocurrido_at,
+      estado: anulado ? "anulado" : ultimo ? "corregido" : "normal",
+      pendiente: cs.find((c) => c.estado === "pendiente") ?? null,
+      correcciones: [...cs].sort((a, b) => String(a.creada_at).localeCompare(String(b.creada_at))),
+    };
+  });
+  for (const c of correcciones) {
+    if (c.tipo !== "agregar" || c.estado === "rechazada") continue;
+    items.push({
+      origen: "agregado", id: c.id, canal: "manual", dentro_geocerca: null, senales: [],
+      tipoOriginal: c.nuevo_tipo, horaOriginal: null,
+      tipo: c.nuevo_tipo, hora: c.nueva_hora,
+      estado: c.estado === "aprobada" ? "agregado" : "agregado_pendiente",
+      pendiente: null, correcciones: [c],
+    });
+  }
+  return items.sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
+}
+
+/** Agrupa por día local (más reciente primero). Devuelve [{fecha, items}]. */
+export function agruparPorDia(items, tz) {
+  const grupos = new Map();
+  for (const it of items) {
+    const dia = fechaLocal(new Date(it.hora), tz);
+    if (!grupos.has(dia)) grupos.set(dia, []);
+    grupos.get(dia).push(it);
+  }
+  return [...grupos.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([fecha, lista]) => ({ fecha, items: lista }));
+}
