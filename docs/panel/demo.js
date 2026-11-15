@@ -35,7 +35,7 @@ const datos = {
     { origen: "registro", fuente_id: "r5", empleado_id: "e4", sede_id: "s1", tipo: "entrada", hora_efectiva: hace(300), hora_original: hace(300), canal: "whatsapp", senales: [], medio_id: "m1", corregido: false },
     { origen: "registro", fuente_id: "r6", empleado_id: "e4", sede_id: "s1", tipo: "salida", hora_efectiva: hace(40), hora_original: hace(40), canal: "whatsapp", senales: ["secuencia_inusual"], medio_id: "m1", corregido: true },
   ],
-  registros: ["r1", "r2", "r3", "r4", "r5", "r6"].map((id, i) => ({ id, lat: 20.67, lng: -103.35, distancia_m: [38, 120, 55, 60, 22, 47][i], dentro_geocerca: true, medio_id: "m1",
+  registros: ["r1", "r2", "r3", "r4", "r5", "r6"].map((id, i) => ({ id, empleado_id: ["e1", "e2", "e3", "e3", "e4", "e4"][i], canal: "whatsapp", senales: [], lat: 20.67, lng: -103.35, distancia_m: [38, 120, 55, 60, 22, 47][i], dentro_geocerca: true, medio_id: "m1",
     tipo: ["entrada", "entrada", "entrada", "pausa_inicio", "entrada", "salida"][i], ocurrido_at: [a("09:24"), a("08:56"), a("08:50"), hace(25), hace(300), hace(40)][i] })),
   medios: [{ id: "m1", ruta_storage: "ejemplo/selfie.jpg" }],
   correcciones: [
@@ -61,13 +61,15 @@ for (const [emp, dias] of Object.entries(PATRONES)) {
     const fecha = sumarDias(hoy, -(i + 1));
     for (const [tipo, hhmm] of [["entrada", dia[0]], ["salida", dia[1]]]) {
       const t = aUTCdesdeLocal(fecha, hhmm, TZ).toISOString();
-      datos.registros_efectivos.push({ origen: "registro", fuente_id: `h${contador++}`, empleado_id: emp, sede_id: "s1", tipo, hora_efectiva: t, hora_original: t, canal: "whatsapp", senales: [], medio_id: null, corregido: false });
+      const idH = `h${contador++}`;
+      datos.registros_efectivos.push({ origen: "registro", fuente_id: idH, empleado_id: emp, sede_id: "s1", tipo, hora_efectiva: t, hora_original: t, canal: "whatsapp", senales: [], medio_id: null, corregido: false });
+      datos.registros.push({ id: idH, empleado_id: emp, tipo, ocurrido_at: t, canal: "whatsapp", senales: [], dentro_geocerca: true, medio_id: null });
     }
   });
 }
 
 // Las consultas del panel filtran por la empresa activa.
-for (const t of ["sedes", "empleados", "registros_efectivos", "horarios", "empleado_horarios", "correcciones"]) {
+for (const t of ["sedes", "empleados", "registros_efectivos", "registros", "horarios", "empleado_horarios", "correcciones"]) {
   for (const fila of datos[t]) fila.empresa_id = "emp";
 }
 datos.plataforma_admins = [{ user_id: "u1" }];
@@ -79,15 +81,24 @@ datos.usuarios = [
 ];
 
 function tabla(nombre) {
-  const filtros = []; let cabeza = false; let modo = "select"; let rango = null;
+  const filtros = []; let cabeza = false; let modo = "select"; let rango = null; let carga = null; let unico = false;
   const b = {
     select(_c, o) { if (o?.head) cabeza = true; return b; },
     eq(c, v) { filtros.push((r) => r[c] === v); return b; },
     neq(c, v) { filtros.push((r) => r[c] !== v); return b; },
-    gte() { return b; }, lt() { return b; }, range(a2, z) { rango = [a2, z]; return b; }, order() { return b; }, limit() { return b; },
+    gte(c, v) { filtros.push((r) => String(r[c]) >= String(v)); return b; },
+    lt(c, v) { filtros.push((r) => String(r[c]) < String(v)); return b; },
+    range(a2, z) { rango = [a2, z]; return b; }, order() { return b; }, limit() { return b; },
     in(c, vs) { filtros.push((r) => vs.includes(r[c])); return b; },
-    insert() { modo = "escritura"; return b; }, update() { modo = "escritura"; return b; },
+    single() { unico = true; return b; },
+    insert(v) { modo = "insertar"; carga = v; return b; }, update() { modo = "escritura"; return b; },
     then(ok, mal) { return Promise.resolve().then(() => {
+      if (modo === "insertar") {
+        // Solo en la memoria de esta página: al recargar vuelve todo a como estaba.
+        const nuevas = [].concat(carga).map((c) => ({ id: `n${contador++}`, creada_at: new Date().toISOString(), ...c }));
+        (datos[nombre] ??= []).push(...nuevas);
+        return { data: unico ? nuevas[0] : null, error: null };
+      }
       if (modo === "escritura") return { data: null, error: null };
       const filas = (datos[nombre] ?? []).filter((r) => filtros.every((f) => f(r)));
       if (rango) return { data: filas.slice(rango[0], rango[1] + 1), error: null };
@@ -99,7 +110,7 @@ function tabla(nombre) {
 
 const sb = {
   from: tabla,
-  rpc: async (n, a2) => { if (n === "miembros_de_empresa") return { data: datos.usuarios, error: null }; const c = datos.correcciones.find((x) => x.id === a2.p_id); if (c) c.estado = a2.p_aprobar ? "aprobada" : "rechazada"; return { data: null, error: null }; },
+  rpc: async (n, a2) => { if (n === "miembros_de_empresa") return { data: datos.usuarios, error: null }; const c = datos.correcciones.find((x) => x.id === a2.p_id); if (c) { c.estado = a2.p_aprobar ? "aprobada" : "rechazada"; c.resuelto_at = new Date().toISOString(); } return { data: null, error: null }; },
   auth: {
     getSession: async () => ({ data: { session: { user: { id: "u1", email: "dueno@ejemplo.mx", user_metadata: { nombre: "Laura Gómez" } }, access_token: "demo" } } }),
     onAuthStateChange() {}, signInWithPassword: async () => ({ error: null }), signOut: async () => { location.reload(); },
