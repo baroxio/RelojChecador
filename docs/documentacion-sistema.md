@@ -2,7 +2,7 @@
 
 Control de asistencia por WhatsApp para empresas mexicanas. El empleado registra entrada, salida y pausas desde su WhatsApp (con ubicación y selfie); el dueño o supervisor lo ve y lo corrige en un panel web instalable.
 
-Versión del panel: **2.0.1**. Actualizado: 2026-11-15. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
+Versión del panel: **2.0.2**. Actualizado: 2026-11-15. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
 
 ![Mapa de tecnologías](img/mapa-tecnologias.svg)
 
@@ -135,6 +135,7 @@ La versión se ve en el panel, en **Cuenta → Versión de la aplicación**, y v
 
 | Versión | Fecha | Qué trae |
 |---|---|---|
+| **2.0.2** | 2026-11-15 | Arreglos: la pantalla Cuenta mostraba la palabra «null» cuando solo hay una empresa; y el service worker ahora pide sus archivos a la red al actualizar (antes podía guardar copias viejas que el navegador ya tenía). |
 | **2.0.1** | 2026-11-15 | Tutoriales animados en la ayuda de la app (Cuenta → Tutoriales en imágenes): corregir o agregar una checada, invitar a un empleado y ver un reporte. Los GIF están en `docs/panel/ayuda/` y se grabaron con la vista de ejemplo (`demo.html`), sin datos reales. |
 | **2.0.0** | 2026-11-15 | Sección **Historial** por trabajador (ver, corregir hora o tipo, anular y agregar registros olvidados, con motivo y aprobación al momento). Mi historial en el menú de WhatsApp. Eliminar sedes y geocercas sin historial. Empleados sin geocerca. Ayuda de la app renovada. Migración `20261115000100` (cambio de tipo en `registros_efectivos`). |
 | 1.x | 2026-10 a 2026-11 | Panel Hoy, Equipo, Correcciones, Reportes (CSV, Excel, PDF), Lugares, Horarios, Administración de usuarios y empresas, PWA con modo sin conexión, alta por WhatsApp sin plantilla, respaldo al NAS. |

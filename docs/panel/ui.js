@@ -2023,7 +2023,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
             h("span", { style: "min-width:0" }, h("div", { class: "fila__nombre" }, estado.empresa?.nombre ?? "Sin empresa"),
               h("div", { class: "fila__sub" }, estado.sedes.length ? `${estado.sedes.length} ${estado.sedes.length === 1 ? "sede" : "sedes"}: ${estado.sedes.map((x) => x.nombre).join(", ")}` : "Sin sedes todavía")),
             h("span", { class: "fila__fin" }, h("span", { class: "chip" }, ROLES[estado.miembro.rol] ?? estado.miembro.rol)))),
-        selectorEmpresa() && h("div", { style: "margin-top:.75rem" }, selectorEmpresa()),
+        ...(selectorEmpresa() ? [h("div", { style: "margin-top:.75rem" }, selectorEmpresa())] : []),
         h("h2", { class: "seccion" }, "Contraseña"),
         formClave,
         h("h2", { class: "seccion" }, "Ayuda y aplicación"),

@@ -1,7 +1,7 @@
 // Service worker del panel: deja abrir la app sin internet y avisa de las versiones nuevas.
 // Sube VERSION en cada cambio del panel: así el navegador detecta la actualización.
 // Formato mayor.menor.parche: mayor = funciones nuevas importantes, menor = mejoras, parche = arreglos.
-const VERSION = "2.0.1";
+const VERSION = "2.0.2";
 const CACHE = `rc-panel-${VERSION}`;
 const ARCHIVOS = [
   "./", "index.html", "styles.css", "main.js", "ui.js", "logic.js", "xlsx.js", "config.js",
@@ -9,8 +9,9 @@ const ARCHIVOS = [
 ];
 
 self.addEventListener("install", (e) => {
+  // Los archivos se piden siempre a la red (cache: reload): así una versión nueva nunca guarda copias viejas del navegador.
   // No se llama a skipWaiting: la versión nueva espera a que el usuario (o el siguiente arranque) la active.
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS)));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS.map((u) => new Request(u, { cache: "reload" })))));
 });
 
 self.addEventListener("activate", (e) => {

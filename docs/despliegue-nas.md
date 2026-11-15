@@ -38,6 +38,13 @@ No expones tu NAS ni tu IP: el NAS sale hacia Cloudflare y de ahí llega el trá
 - No hay claves en esos archivos: `config.js` tiene la URL de Supabase y la clave *publicable*, que ya es pública en GitHub Pages. La clave secreta y el token de WhatsApp viven solo como secretos de Supabase.
 - Quien entra tiene que iniciar sesión en Supabase; los permisos los aplica la base de datos (RLS), no el NAS.
 
+### Caché: por qué una versión nueva puede tardar en llegar
+Cloudflare guarda en su caché los archivos estáticos (`.js`, `.css`, imágenes) y le dice al navegador que los conserve 4 horas. Si nginx no pide lo contrario, el panel nuevo tarda horas en verse aunque el NAS ya lo tenga. Por eso `deploy/nas/nginx.conf` manda `Cache-Control: no-cache` en todo el panel: Cloudflare y el navegador revalidan en cada carga y solo descargan lo que cambió (ETag).
+
+- **Después de cambiar `nginx.conf`:** recarga nginx con `docker exec relojchecador-panel nginx -s reload` (o `docker compose restart` en `deploy/nas`).
+- **Una sola vez:** en el panel de Cloudflare, *Caching → Configuration → Purge Everything*, para borrar las copias viejas que ya tiene.
+- **Para comprobarlo:** `curl -sI https://checador.moba.mx/panel/ui.js` debe mostrar `cache-control: no-cache` (y `cf-cache-status: REVALIDATED` o `DYNAMIC`, no `HIT` con `max-age`).
+
 ## 4. Qué cambia si usas otro dominio
 - Nada en Supabase: el inicio de sesión es con correo y contraseña, sin redirecciones.
 - La PWA instalada desde `panel.tudominio.com` es una app aparte de la instalada desde GitHub Pages (otro origen); tendrán que iniciar sesión por separado.
