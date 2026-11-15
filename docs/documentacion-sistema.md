@@ -2,7 +2,7 @@
 
 Control de asistencia por WhatsApp para empresas mexicanas. El empleado registra entrada, salida y pausas desde su WhatsApp (con ubicación y selfie); el dueño o supervisor lo ve y lo corrige en un panel web instalable.
 
-Actualizado: 2026-11-13. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
+Versión del panel: **2.0.0**. Actualizado: 2026-11-15. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
 
 ![Mapa de tecnologías](img/mapa-tecnologias.svg)
 
@@ -129,7 +129,16 @@ Los mensajes de servicio (respuestas dentro de las 24 h posteriores a un mensaje
 - **Revocar los tokens que se pegaron en el chat durante las pruebas** (token del usuario de sistema de Meta y token del CLI de Supabase) antes de usar el sistema en producción.
 - Opcionales: reporte para la STPS, horas extra, días festivos, recrear la plantilla `alta_empleado` en la cuenta nueva.
 
-## 9. Más documentación
+## 9. Versiones del panel
+
+La versión se ve en el panel, en **Cuenta → Versión de la aplicación**, y vive en `VERSION` de `docs/panel/sw.js` (formato mayor.menor.parche; subirla hace que los teléfonos detecten la actualización).
+
+| Versión | Fecha | Qué trae |
+|---|---|---|
+| **2.0.0** | 2026-11-15 | Sección **Historial** por trabajador (ver, corregir hora o tipo, anular y agregar registros olvidados, con motivo y aprobación al momento). Mi historial en el menú de WhatsApp. Eliminar sedes y geocercas sin historial. Empleados sin geocerca. Ayuda de la app renovada. Migración `20261115000100` (cambio de tipo en `registros_efectivos`). |
+| 1.x | 2026-10 a 2026-11 | Panel Hoy, Equipo, Correcciones, Reportes (CSV, Excel, PDF), Lugares, Horarios, Administración de usuarios y empresas, PWA con modo sin conexión, alta por WhatsApp sin plantilla, respaldo al NAS. |
+
+## 10. Más documentación
 
 | Documento | Contenido |
 |---|---|

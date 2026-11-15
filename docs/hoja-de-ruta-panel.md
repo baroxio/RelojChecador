@@ -79,6 +79,15 @@ Hasta ahora Supabase era el único lugar de los datos (la API no lista respaldos
 - Probado con un PostgreSQL 16 real y un `docker` simulado (`bash tests/respaldo/prueba.sh`, 29 comprobaciones), incluida la **restauración en una base vacía con los mismos datos**. **Sin probar:** Docker real, el NAS, el Session pooler con el usuario `respaldo` y la sincronización S3 con llaves reales: la primera corrida a mano es obligatoria.
 - Pendiente: instalarlo, ensayar una restauración contra un proyecto de Supabase de prueba, y una segunda copia fuera del NAS (Hyper Backup).
 
+## Fase 7: historial por trabajador y corrección directa (versión 2.0.0)
+Pantalla **Historial** en el menú (`#/historial?empleado=ID`), también desde la ficha de Equipo y el detalle de Hoy.
+- Lista los registros de un trabajador en un rango de fechas (por defecto 14 días), agrupados por día local, con canal, señales y las correcciones que tuvo (corregido, anulado, pendiente, agregado a mano). La unión de registros y correcciones está en `armarHistorial` de `docs/panel/logic.js`, con pruebas.
+- Dueño, administrador y supervisor (solo de sus sedes) pueden **corregir** (hora, tipo o ambos), **anular** (dos pasos) y **agregar** un registro olvidado. Cada cambio exige un motivo y se guarda como una corrección que el panel aprueba al momento con `resolver_correccion`; el original no se toca. No hace falta función de servidor.
+- Para cambiar el tipo, la migración `20261115000100_corregir_tipo_de_registro.sql` hace que `registros_efectivos` use `nuevo_tipo` de la última modificación aprobada (aplicada en la base real el 2026-11-15).
+- Límites: un registro anulado o agregado a mano no se deshace desde el panel; con una corrección pendiente en el registro no se ofrece Corregir hasta resolverla.
+- Relleno por horario: el 2026-11-15 se agregaron por SQL 24 entradas y salidas faltantes del 9 al 14 de noviembre (David Rodríguez, Rigoberto Barocio y Verónica Velasco) como correcciones aprobadas con el motivo «Rellenado por el dueño según el horario». No son checadas reales y así quedan en el historial.
+- Probado con la interfaz simulada (jsdom) y la lógica pura. **Sin probar:** en un navegador con datos reales.
+
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
 2. ~~Registro sin internet~~ Resuelto por defecto: cuenta como registro con señal y corrección pendiente (ver Fase 4). Se puede cambiar si prefieres que solo quede como aviso.

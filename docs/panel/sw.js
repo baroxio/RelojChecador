@@ -1,6 +1,7 @@
 // Service worker del panel: deja abrir la app sin internet y avisa de las versiones nuevas.
 // Sube VERSION en cada cambio del panel: así el navegador detecta la actualización.
-const VERSION = "2026.11.15-1";
+// Formato mayor.menor.parche: mayor = funciones nuevas importantes, menor = mejoras, parche = arreglos.
+const VERSION = "2.0.0";
 const CACHE = `rc-panel-${VERSION}`;
 const ARCHIVOS = [
   "./", "index.html", "styles.css", "main.js", "ui.js", "logic.js", "xlsx.js", "config.js",

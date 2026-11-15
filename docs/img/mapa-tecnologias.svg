@@ -3,7 +3,7 @@
 <defs><marker id="m1a7f4b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f4b"/></marker><marker id="m2457c5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2457c5"/></marker><marker id="mc25b00" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c25b00"/></marker><marker id="m6b3fb5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b3fb5"/></marker><marker id="m6b7599" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7599"/></marker></defs>
 <rect width="1600" height="1020" fill="#f7f8fc"/>
 <text x="40" y="48" font-size="26" font-weight="700" fill="#101b3b">RelojChecador · mapa de tecnologías</text>
-<text x="40" y="74" font-size="14" fill="#55607f">Control de asistencia por WhatsApp para empresas mexicanas · actualizado 2026-11-13</text>
+<text x="40" y="74" font-size="14" fill="#55607f">Control de asistencia por WhatsApp para empresas mexicanas · versión 2.0.0 · actualizado 2026-11-15</text>
 <rect x="30" y="100" width="300" height="860" rx="14" fill="#1a7f4b" fill-opacity="0.08" stroke="#1a7f4b" stroke-opacity="0.35"/>
 <text x="46" y="126" font-size="14" font-weight="700" fill="#1a7f4b" letter-spacing="1">PERSONAS Y DISPOSITIVOS</text>
 <rect x="380" y="100" width="330" height="860" rx="14" fill="#c25b00" fill-opacity="0.08" stroke="#c25b00" stroke-opacity="0.35"/>

@@ -38,7 +38,7 @@ erDiagram
 | Identificadores | `uuid` en todo | La replicación lógica no sincroniza secuencias |
 | Multiempresa | `empresa_id` en cada fila y llaves foráneas compuestas `(id, empresa_id)` | La base impide mezclar datos de dos empresas, no solo la aplicación |
 | Registro inmutable | `registros` solo acepta `insert`; un trigger bloquea `update`, `delete` y `truncate` | Es la evidencia ante la STPS |
-| Correcciones | Tabla `correcciones` (agregar, modificar hora, anular) con aprobación; la vista `registros_efectivos` las aplica | Se conserva el original y la traza |
+| Correcciones | Tabla `correcciones` (agregar, modificar hora, anular) con aprobación; la vista `registros_efectivos` las aplica (también el cambio de tipo con `nuevo_tipo`, migración `20261115000100`) | Se conserva el original y la traza |
 | Hora que vale | `ocurrido_at` = hora del servidor; `ts_cliente` = la que reporta WhatsApp | Responde la crítica de Lenox HR de que la hora es la del mensaje |
 | Intento vs. registro | `sesiones_registro` guarda el intento (ubicación y luego selfie) y su rechazo; `registros` solo lo completado | El flujo tiene dos mensajes; los rechazos también quedan como evidencia |
 | Regla de WhatsApp | `check`: un registro por WhatsApp exige ubicación y `dentro_geocerca` | La regla vive en la base |
