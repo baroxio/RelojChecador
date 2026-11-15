@@ -43,6 +43,7 @@ Cloudflare guarda en su caché los archivos estáticos (`.js`, `.css`, imágenes
 
 - **Después de cambiar `nginx.conf`:** recarga nginx con `docker exec relojchecador-panel nginx -s reload` (o `docker compose restart` en `deploy/nas`).
 - **Una sola vez:** en el panel de Cloudflare, *Caching → Configuration → Purge Everything*, para borrar las copias viejas que ya tiene.
+- **Browser Cache TTL:** en *Caching → Configuration → Browser Cache TTL* elige **Respect Existing Headers**. Si está en otro valor (por ejemplo 4 horas), Cloudflare pisa el `no-cache` del NAS y le dice al navegador `max-age=14400`.
 - **Para comprobarlo:** `curl -sI https://checador.moba.mx/panel/ui.js` debe mostrar `cache-control: no-cache` (y `cf-cache-status: REVALIDATED` o `DYNAMIC`, no `HIT` con `max-age`).
 
 ## 4. Qué cambia si usas otro dominio

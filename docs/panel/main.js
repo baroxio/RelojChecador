@@ -57,8 +57,18 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
         if (nuevo.state === "installed" && navigator.serviceWorker.controller) marcar(nuevo);
       });
     });
-    const pedirVersion = () => navigator.serviceWorker.controller?.postMessage("GET_VERSION");
+    // La versión se la pedimos al service worker, aunque todavía no controle la página (por ejemplo, tras una recarga forzada).
+    const pedirVersion = () => (navigator.serviceWorker.controller ?? reg.active)?.postMessage("GET_VERSION");
     navigator.serviceWorker.ready.then(pedirVersion);
+    // Respaldo: si el service worker no contesta, se lee la versión del propio sw.js.
+    setTimeout(async () => {
+      if (RC.version !== "desconocida") return;
+      try {
+        const texto = await (await fetch("sw.js", { cache: "no-store" })).text();
+        const m = /const VERSION = "([^"]+)"/.exec(texto);
+        if (m) { RC.version = m[1]; RC.avisar(); }
+      } catch { /* sin conexión: se queda como desconocida */ }
+    }, 2500);
     // Busca versiones nuevas al abrir, al volver a la app y cada hora.
     const buscar = () => reg.update().catch(() => {});
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") buscar(); });
