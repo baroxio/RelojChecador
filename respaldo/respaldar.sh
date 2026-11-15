@@ -4,7 +4,8 @@
 # Qué respalda, cada día:
 #   db/base-FECHA.dump     estructura y datos de los esquemas public y private (empleados, registros,
 #                          correcciones, bitácora, reglas de seguridad...)
-#   db/auth-FECHA.dump     solo los datos de auth.users y auth.identities (los usuarios del panel)
+#   db/auth-FECHA.dump     solo los datos de auth.users y auth.identities (los usuarios del panel);
+#                          se omite con SALTAR_AUTH=1 cuando se usa el usuario de solo lectura
 #   selfies/               copia del bucket privado «selfies» (solo agrega; nunca borra lo que ya bajó)
 #
 # Cómo corre: el Programador de tareas de DSM lo ejecuta a diario como root. Todo se hace con
@@ -102,7 +103,15 @@ dump() {
 requeridas_public=""
 for t in $TABLAS_CLAVE; do requeridas_public="$requeridas_public public:$t"; done
 dump base "$requeridas_public" 20000 --schema=public --schema=private
-dump auth "auth:users auth:identities" 300 --data-only --table=auth.users --table=auth.identities
+if [ "${SALTAR_AUTH:-0}" != "1" ]; then
+  dump auth "auth:users auth:identities" 300 --data-only --table=auth.users --table=auth.identities
+  estado_auth="respaldados"
+else
+  # El usuario de solo lectura de Supabase no puede leer el esquema auth (la plataforma no deja darle ese permiso).
+  # Los usuarios del panel son pocos y se recrean desde Administrar con una clave temporal.
+  estado_auth="omitidos"
+  log "AVISO: usuarios del panel (auth) omitidos por configuración (SALTAR_AUTH=1)"
+fi
 
 # --- Selfies -------------------------------------------------------------------
 if [ "${SALTAR_SELFIES:-0}" != "1" ]; then
@@ -127,6 +136,7 @@ find "$DESTINO/db" -type f -name '*-01.dump' -mtime +"$((MESES * 31))" -exec rm 
   echo "ultimo_respaldo_ok=$(date '+%Y-%m-%d %H:%M:%S')"
   echo "fecha=$FECHA"
   echo "selfies=$n_selfies"
+  echo "usuarios_panel=$estado_auth"
   echo "libre_mb_al_empezar=$libre_mb"
   ls -l "$DESTINO/db" | grep -E "(base|auth)-$FECHA\.dump"
 } > "$DESTINO/ESTADO.txt.tmp" && mv -f "$DESTINO/ESTADO.txt.tmp" "$DESTINO/ESTADO.txt"

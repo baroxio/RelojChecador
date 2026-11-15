@@ -4,12 +4,20 @@ Hasta ahora Supabase era el único lugar de los datos: su API no lista respaldos
 
 Archivos: [`respaldo/respaldar.sh`](../respaldo/respaldar.sh) (el script), [`respaldo/respaldo.env.ejemplo`](../respaldo/respaldo.env.ejemplo) (la configuración), [`respaldo/crear_usuario_respaldo.sql`](../respaldo/crear_usuario_respaldo.sql) (usuario de solo lectura). Prueba: `bash tests/respaldo/prueba.sh`.
 
+## Cómo quedó instalado en este NAS (2026-11-15)
+- **Usuario de la base:** `respaldo`, de solo lectura. Supabase no deja darle acceso al esquema `auth` (el rol `postgres` no tiene permiso para otorgarlo), así que **no se respaldan los usuarios del panel** (`SALTAR_AUTH=1`). Son pocos y se recrean desde Administrar con una clave temporal. Si algún día quieres respaldarlos, usa el usuario `postgres` en `SUPABASE_DB_URL` y quita `SALTAR_AUTH`.
+- **Carpeta:** `/volume1/Docker/relojchecador-respaldos` (fuera del repositorio, permisos `700`). Ahí viven `respaldo.env` (con las contraseñas, `600`), `db/`, `selfies/`, `logs/` y `ESTADO.txt`. No está cifrada: si prefieres una carpeta compartida cifrada, cambia `DESTINO` y mueve el contenido.
+- **El script corre desde el repositorio** (`respaldo/respaldar.sh`), así un `git pull` lo actualiza solo. La tarea de DSM lo llama con la configuración fuera del repositorio:
+  ```
+  RC_CONFIG=/volume1/Docker/relojchecador-respaldos/respaldo.env sh /volume1/Docker/relojchecadorwhatsapp/respaldo/respaldar.sh
+  ```
+
 ## Qué respalda
 
 | Qué | Dónde queda en el NAS | Contenido |
 |---|---|---|
 | La base | `db/base-AAAA-MM-DD.dump` | Estructura y datos de los esquemas `public` y `private`: empresas, sedes, empleados, registros, correcciones, bitácora, horarios y las reglas de seguridad |
-| Usuarios del panel | `db/auth-AAAA-MM-DD.dump` | Solo los datos de `auth.users` y `auth.identities` |
+| Usuarios del panel | `db/auth-AAAA-MM-DD.dump` | Solo los datos de `auth.users` y `auth.identities`. **Se omite con `SALTAR_AUTH=1`** (el usuario de solo lectura no puede leerlos) |
 | Selfies | `selfies/` | Copia del bucket privado. **Solo agrega:** si una selfie desaparece de Supabase, la copia del NAS se queda |
 | Señal de vida | `ESTADO.txt` y `logs/` | Cuándo fue el último respaldo bueno y el detalle de cada corrida |
 

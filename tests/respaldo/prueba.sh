@@ -175,6 +175,13 @@ echo "SALTAR_SELFIES=1" >> "$T/sin_s3.env"
 RC_CONFIG="$T/sin_s3.env" sh "$R" > "$T/salida5e.txt" 2>&1; cod=$?
 espera "SALTAR_SELFIES=1: respalda la base y avisa que omitió las selfies" "[ $cod -eq 0 ] && grep -q 'selfies=omitidas' $T/nas/ESTADO.txt"
 
+echo "=== 6. SALTAR_AUTH=1: sin usuarios del panel (usuario de solo lectura) ==="
+rm -f "$D/auth-$HOY.dump" "$T/nas/ESTADO.txt"
+{ cat "$T/respaldo.env"; echo "SALTAR_AUTH=1"; } > "$T/sin_auth.env"
+RC_CONFIG="$T/sin_auth.env" sh "$R" > "$T/salida6.txt" 2>&1; cod=$?
+espera "SALTAR_AUTH=1: termina con código 0" "[ $cod -eq 0 ]"
+espera "SALTAR_AUTH=1: respalda la base pero no crea auth-$HOY.dump" "[ -s $D/base-$HOY.dump ] && [ ! -e $D/auth-$HOY.dump ]"
+espera "SALTAR_AUTH=1: ESTADO.txt avisa que los usuarios quedaron omitidos" "grep -q '^usuarios_panel=omitidos' $T/nas/ESTADO.txt"
 echo
 [ "$fallas" -eq 0 ] && echo "Resultado: TODO OK" || echo "Resultado: HAY $fallas FALLAS"
 exit "$fallas"
