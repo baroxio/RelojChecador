@@ -1990,6 +1990,12 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Cuenta y ayuda ----------
+  // Tutoriales animados (docs/panel/ayuda). Se hicieron con la vista de ejemplo: no muestran datos reales.
+  const TUTORIALES = [
+    { titulo: "Cómo corregir o agregar una checada", archivo: "corregir-o-agregar-una-checada.gif", alt: "Pasos en Historial: elegir al trabajador, agregar un registro olvidado y corregir una hora." },
+    { titulo: "Cómo invitar a un empleado por WhatsApp", archivo: "invitar-a-un-empleado.gif", alt: "Pasos en Equipo: abrir al empleado invitado, generar su código y mostrar el código QR." },
+    { titulo: "Cómo ver un reporte de asistencia", archivo: "ver-un-reporte.gif", alt: "Pasos en Reportes: elegir el periodo, abrir el detalle de un empleado y descargar el reporte." },
+  ];
   const DESARROLLADOR = { nombre: "Jose Rigoberto Barocio Sida", correo: "jose.rigoberto@gmail.com", sitio: "Guadalajara, Jalisco, México" };
 
   function vistaCuenta(cont, ctx) {
@@ -2044,6 +2050,10 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("li", {}, h("strong", {}, "Correcciones: "), "los registros originales nunca se editan ni se borran. Cada cambio queda con quién lo hizo, cuándo y por qué. Aquí se aprueban las que pide el empleado desde WhatsApp."),
           h("li", {}, h("strong", {}, "Reportes: "), "asistencias, faltas, retardos y horas por periodo; se descargan en Excel, CSV o PDF."),
           h("li", {}, h("strong", {}, "Señales: "), "una señal no acusa a nadie; solo avisa que conviene revisar el registro.")),
+        h("h2", { class: "seccion" }, "Tutoriales en imágenes"),
+        h("div", { class: "tutoriales" }, TUTORIALES.map((t) => h("details", { class: "tutorial" },
+          h("summary", {}, t.titulo),
+          h("img", { src: `ayuda/${t.archivo}`, alt: t.alt, loading: "lazy", width: "820", height: "584" })))),
         h("h2", { class: "seccion" }, "Novedades de la versión 2.0"),
         h("ul", { class: "ayuda" },
           h("li", {}, h("strong", {}, "Historial por trabajador: "), "nueva sección para ver todos los registros de una persona día por día."),

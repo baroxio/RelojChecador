@@ -345,3 +345,10 @@ button.fila[aria-expanded="true"] .fila__flecha { transform: rotate(180deg); }
   #impresion thead { display: table-header-group; }
   #impresion tr { break-inside: avoid; }
 }
+
+/* Tutoriales animados de la ayuda */
+.tutoriales { display: grid; gap: 0.5rem; }
+.tutorial { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); overflow: hidden; }
+.tutorial summary { cursor: pointer; padding: 0.8rem 0.9rem; font-weight: 600; }
+.tutorial summary:focus-visible { outline: 3px solid var(--tinta-700); outline-offset: -3px; }
+.tutorial img { display: block; width: 100%; height: auto; border-top: 1px solid var(--linea); }

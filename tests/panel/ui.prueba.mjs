@@ -350,6 +350,8 @@ for (const ruta of ["#/cuenta", "#/mas"]) {
   assert.match(t, /Versión de la aplicación/);
   assert.match(t, /Jose Rigoberto Barocio Sida/);
   assert.match(t, /Cómo se usa/);
+  assert.match(t, /Cómo corregir o agregar una checada/);
+  assert.equal(document.querySelectorAll("details.tutorial img").length, 3);
   assert.match(t, /Cerrar sesión/);
 }
 console.log("OK Cuenta: usuario, ayuda, actualización y datos del desarrollador (también por #/mas)");
