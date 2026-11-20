@@ -352,3 +352,16 @@ button.fila[aria-expanded="true"] .fila__flecha { transform: rotate(180deg); }
 .tutorial summary { cursor: pointer; padding: 0.8rem 0.9rem; font-weight: 600; }
 .tutorial summary:focus-visible { outline: 3px solid var(--tinta-700); outline-offset: -3px; }
 .tutorial img { display: block; width: 100%; height: auto; border-top: 1px solid var(--linea); }
+
+/* Una línea horizontal por registro (historial y kárdex) */
+.renglon { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; padding: 0.6rem 0.9rem; }
+.renglon__texto { flex: 1 1 12rem; min-width: 0; }
+.renglon__titulo { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.renglon__detalle { padding: 0 0.9rem; }
+.renglon__detalle:not(:empty) { padding-bottom: 0.6rem; }
+@media (min-width: 40rem) {
+  .renglon { flex-wrap: nowrap; }
+  .renglon > * { flex-shrink: 0; }
+  .renglon__texto, .renglon__titulo { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .renglon__titulo { max-width: 40%; }
+}

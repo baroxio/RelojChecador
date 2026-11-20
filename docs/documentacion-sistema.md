@@ -2,7 +2,7 @@
 
 Control de asistencia por WhatsApp para empresas mexicanas. El empleado registra entrada, salida y pausas desde su WhatsApp (con ubicación y selfie); el dueño o supervisor lo ve y lo corrige en un panel web instalable.
 
-Versión del panel: **2.1.2**. Actualizado: 2026-11-20. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
+Versión del panel: **2.1.3**. Actualizado: 2026-11-20. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
 
 ![Mapa de tecnologías](img/mapa-tecnologias.svg)
 
@@ -145,6 +145,7 @@ La versión se ve en el panel, en **Cuenta → Versión de la aplicación**, y v
 | Versión | Fecha | Qué trae |
 |---|---|---|
 | **2.1.2** | 2026-11-20 | Kárdex: la cámara ahora se abre dentro de la página (vista en vivo y botón «Capturar»), así funciona también en computadora; en la 2.1.1 solo abría el selector de archivos en Chrome de escritorio. Si el navegador no ofrece cámara, se usa el selector con captura. |
+| **2.1.3** | 2026-11-20 | Historial y Kárdex por trabajador: cada registro se muestra en una sola línea horizontal (en pantallas anchas) en lugar de una tarjeta de varias líneas; en el celular se acomoda en varias líneas. |
 | **2.1.1** | 2026-11-20 | Kárdex: al subir un documento se puede **tomar la foto con la cámara** del dispositivo (además de elegir un PDF o imagen). |
 | **2.1.0** | 2026-11-20 | **Kárdex por empleado:** historia laboral, incidencias y ausencias, notas y sanciones, y documentos (PDF o imagen) con anulación auditada. Tabla `kardex_eventos`, bucket `kardex` y migración `20261120000100`. |
 | **2.0.3** | 2026-11-15 | Arreglo: «Versión de la aplicación» en Cuenta ya no se queda en «desconocida» tras una recarga forzada (se la pide al service worker aunque no controle la página y, si no contesta, la lee de `sw.js`). |

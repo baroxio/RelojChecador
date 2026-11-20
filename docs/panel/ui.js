@@ -1260,17 +1260,17 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const acciones = puedeCorregir && it.origen === "registro" && !anulado && !it.pendiente
         ? h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioCorregir(it, tz, detalle) }, icono("correcciones"), "Corregir")
         : null;
-      return h("li", { style: "padding:.7rem .9rem; display:grid; gap:.45rem" },
-        h("div", { style: "display:flex; gap:.6rem; align-items:center; flex-wrap:wrap" },
+      const texto = [ETIQUETAS_TIPO[it.tipo], ...meta, ...motivos].filter(Boolean).join(" · ");
+      return h("li", {},
+        h("div", { class: "renglon" },
           h("span", { style: anulado ? "text-decoration:line-through; opacity:.6" : "" },
             sello(it.tipo, horaLocal(new Date(it.hora), tz), { corregido: it.estado === "corregido" || it.origen === "agregado" })),
-          h("span", { class: "meta", style: "flex:1; min-width:8rem" }, [ETIQUETAS_TIPO[it.tipo], ...meta].filter(Boolean).join(" · ")),
+          h("span", { class: "renglon__texto meta", title: texto }, texto),
           anulado && h("span", { class: "chip chip--rojo" }, "Anulado"),
           it.estado === "agregado" && h("span", { class: "chip" }, "Agregado a mano"),
           (it.pendiente || it.estado === "agregado_pendiente") && h("span", { class: "chip chip--aviso" }, "Corrección pendiente"),
           acciones),
-        ...motivos.map((m) => h("div", { class: "fila__sub", style: "white-space:normal" }, m)),
-        detalle);
+        h("div", { class: "renglon__detalle" }, detalle));
     }
 
     // Aplica una corrección al momento: se registra con su motivo y se aprueba con la sesión de quien la hace.
@@ -1483,18 +1483,18 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const anular = puedeAdministrar() && it.origen === "evento" && !it.anulado
         ? h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioAnular(it, detalleZona) }, "Anular")
         : null;
-      return h("li", { style: "padding:.7rem .9rem; display:grid; gap:.4rem" },
-        h("div", { style: "display:flex; gap:.5rem; align-items:center; flex-wrap:wrap" },
+      const resto = [meta, cambio].filter(Boolean).join(" · ");
+      return h("li", {},
+        h("div", { class: "renglon" },
           h("span", { class: `chip${it.categoria === "nota" && ["llamada_atencion", "acta_administrativa"].includes(it.tipo) ? " chip--aviso" : it.categoria === "nota" && it.tipo === "reconocimiento" ? " chip--ok" : ""}` }, etiquetaKardex(it.categoria, it.tipo)),
-          h("strong", { style: `flex:1; min-width:8rem;${it.anulado ? " text-decoration:line-through; opacity:.6" : ""}` }, it.titulo),
+          h("strong", { class: "renglon__titulo", title: it.titulo, style: it.anulado ? "text-decoration:line-through; opacity:.6" : "" }, it.titulo),
+          h("span", { class: "renglon__texto fila__sub", title: resto }, resto),
           it.anulado && h("span", { class: "chip chip--rojo" }, "Anulado"),
-          it.origen === "auto" && h("span", { class: "chip chip--baja" }, "Automático")),
-        h("div", { class: "fila__sub", style: "white-space:normal" }, meta),
-        cambio && h("div", { class: "fila__sub", style: "white-space:normal" }, cambio),
-        it.detalle && h("div", { style: "white-space:pre-wrap" }, it.detalle),
-        it.anulado && h("div", { class: "fila__sub", style: "white-space:normal" }, `Anulado: ${it.motivo_anulacion ?? ""}`),
-        (verDoc || anular) && h("div", { class: "formulario__acciones" }, verDoc, anular),
-        detalleZona);
+          it.origen === "auto" && h("span", { class: "chip chip--baja" }, "Automático"),
+          verDoc, anular),
+        (it.detalle || it.anulado) && h("div", { class: "renglon__detalle fila__sub", style: "white-space:pre-wrap" },
+          [it.detalle, it.anulado ? `Anulado: ${it.motivo_anulacion ?? ""}` : null].filter(Boolean).join("\n")),
+        h("div", { class: "renglon__detalle" }, detalleZona));
     }
 
     async function abrirDocumento(boton, it) {
