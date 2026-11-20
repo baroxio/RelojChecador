@@ -1258,11 +1258,11 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         .map((c) => `${c.estado === "rechazada" ? "Rechazada: " : c.tipo === "anular" ? "Anulado: " : c.tipo === "agregar" ? "Agregado a mano: " : "Corregido: "}${c.motivo}`);
       const detalle = h("div", {});
       const acciones = puedeCorregir && it.origen === "registro" && !anulado && !it.pendiente
-        ? h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioCorregir(it, tz, detalle) }, icono("correcciones"), "Corregir")
+        ? h("button", { class: "boton boton--secundario boton--chico", type: "button", "aria-label": "Corregir registro", onclick: () => formularioCorregir(it, tz, detalle) }, icono("correcciones"), h("span", { class: "renglon__etq" }, "Corregir"))
         : null;
       const texto = [ETIQUETAS_TIPO[it.tipo], ...meta, ...motivos].filter(Boolean).join(" · ");
       return h("li", {},
-        h("div", { class: "renglon" },
+        h("div", { class: "renglon renglon--fila" },
           h("span", { style: anulado ? "text-decoration:line-through; opacity:.6" : "" },
             sello(it.tipo, horaLocal(new Date(it.hora), tz), { corregido: it.estado === "corregido" || it.origen === "agregado" })),
           h("span", { class: "renglon__texto meta", title: texto }, texto),

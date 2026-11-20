@@ -365,3 +365,13 @@ button.fila[aria-expanded="true"] .fila__flecha { transform: rotate(180deg); }
   .renglon__texto, .renglon__titulo { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .renglon__titulo { max-width: 40%; }
 }
+
+/* Historial: una sola fila por registro también en el celular */
+.renglon--fila { flex-wrap: nowrap; gap: 0.5rem; padding: 0.5rem 0.75rem; }
+.renglon--fila > * { flex-shrink: 0; }
+.renglon--fila .renglon__texto { flex: 1 1 0; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-xs); }
+.renglon--fila .chip { max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 39.99rem) {
+  .renglon--fila .renglon__etq { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .renglon--fila .boton { padding-inline: 0.55rem; min-width: 44px; }
+}
