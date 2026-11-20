@@ -6,6 +6,7 @@ import {
   formatearTelefono, horaLocal, iniciales, normalizarTelefonoMx, resumenDelDia,
   DESCRIPCION_ROL, rolesAsignables, puedeGestionarRol,
   PERIODOS, ETIQUETA_ESTADO_DIA, ENCABEZADOS_CSV_RESUMEN, ENCABEZADOS_CSV_DETALLE, aCSV, errorDePeriodo, filasCSVDetalle, filasCSVResumen, formatearHoras, periodoPredefinido, reporteAsistencia, sumarDias, totalesGenerales,
+  CATEGORIAS_KARDEX, TIPOS_KARDEX, TIPOS_CON_CAMBIO, armarKardex, diasDeRango, etiquetaKardex, filtrarKardex, resumenKardex, rutaArchivoKardex, validarEventoKardex,
   NOMBRES_DIA, ZONAS_HORARIAS_MX, diferenciasEmpleado, validarDatosEmpleado, errorDeGeocerca, errorDeHorario, parsearCoordenadas, parsearVigencia, planearCambioHorario, resumenHorario,
 } from "./logic.js";
 import { crearXlsx } from "./xlsx.js";
@@ -295,7 +296,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
   }
 
   // ---------- Rutas ----------
-  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, historial: vistaHistorial, correcciones: vistaCorrecciones, reportes: vistaReportes, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
+  const RUTAS = { hoy: vistaHoy, equipo: vistaEquipo, historial: vistaHistorial, kardex: vistaKardex, correcciones: vistaCorrecciones, reportes: vistaReportes, administrar: vistaAdministrar, cuenta: vistaCuenta, mas: vistaCuenta };
 
   function rutear() {
     clearInterval(temporizador);
@@ -308,7 +309,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     estado.ruta += 1;
     const miRuta = estado.ruta;
     document.querySelectorAll(".nav a").forEach((a) => {
-      if (a.dataset.ruta === nombre) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+      if (a.dataset.ruta === (nombre === "kardex" ? "historial" : nombre)) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     const cont = document.getElementById("contenido");
     if (!cont) return; // la pantalla actual no tiene contenido (por ejemplo, el cambio de contraseña)
@@ -777,14 +778,15 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
 
     function pintarAcciones(e, cuerpo) {
       const verHistorial = h("a", { class: "boton boton--secundario boton--chico", href: `#/historial?empleado=${encodeURIComponent(e.id)}` }, icono("historial"), "Historial");
+      const verKardex = h("a", { class: "boton boton--secundario boton--chico", href: `#/kardex?empleado=${encodeURIComponent(e.id)}` }, icono("historial"), "Kárdex");
       const zonaInvitacion = h("div", {});
       const acciones = h("div", { class: "formulario__acciones", style: "margin-top:.75rem" });
       if (e.estado === "baja") {
-        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Este empleado está dado de baja. Su historial se conserva."), h("div", { class: "formulario__acciones" }, verHistorial));
+        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Este empleado está dado de baja. Su historial se conserva."), h("div", { class: "formulario__acciones" }, verHistorial, verKardex));
         return;
       }
       if (!puedeAdministrar()) {
-        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Solo el dueño o un administrador pueden invitar o dar de baja."), h("div", { class: "formulario__acciones" }, verHistorial));
+        cuerpo.replaceChildren(h("p", { style: "margin-top:.75rem" }, "Solo el dueño o un administrador pueden invitar o dar de baja."), h("div", { class: "formulario__acciones" }, verHistorial, verKardex));
         return;
       }
       const invitar = h("button", { class: "boton boton--primario boton--chico", type: "button",
@@ -807,7 +809,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         } }, "Dar de baja");
       const zonaEdicion = h("div", {});
       const editar = h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => mostrarEdicion(e, zonaEdicion) }, "Editar datos");
-      acciones.append(invitar, editar, verHistorial, baja);
+      acciones.append(invitar, editar, verHistorial, verKardex, baja);
       const zonaHorario = h("div", { style: "margin-top:.75rem" }, h("p", { class: "nota" }, "Cargando horario…"));
       cuerpo.replaceChildren(zonaHorario, acciones, zonaEdicion, zonaInvitacion);
       pintarHorarioEmpleado(e, zonaHorario);
@@ -1194,6 +1196,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       h("div", { class: "cabecera" },
         h("div", { class: "cabecera__texto" }, h("h1", {}, "Historial"), h("p", {}, "Todos los registros de un trabajador, con sus correcciones")),
         h("div", { class: "cabecera__acciones" }, agregarBoton)),
+      pestanasHistorial("historial", () => empleadoId),
       h("div", { class: "formulario", style: "margin-bottom:.75rem" },
         h("div", { class: "campo" }, h("label", { for: "h-emp" }, "Trabajador"), selEmp),
         h("div", { class: "cuadricula cuadricula--2" },
@@ -1383,6 +1386,235 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
     desdeIn.addEventListener("change", cargar);
     hastaIn.addEventListener("change", cargar);
     await cargar();
+  }
+
+  // ---------- Kárdex del empleado ----------
+  // Expediente de cada trabajador: historia laboral, incidencias, notas/sanciones y documentos.
+  // Los eventos no se editan ni se borran: se anulan con motivo (solo dueño y administrador).
+  async function vistaKardex(cont, ctx) {
+    const puedeAgregar = puedeResolver();
+    let empleados = [];
+    let empleadoId = ctx.parametros?.get("empleado") ?? "";
+    let categoria = "todas";
+    let verAnulados = false;
+    let datos = null; // { eventos, horarios, nombresHorario }
+    const selEmp = h("select", { class: "entrada", id: "k-emp", "aria-label": "Trabajador" });
+    const filtros = h("div", { class: "resumen", role: "group", "aria-label": "Filtrar por categoría" });
+    const chkAnulados = h("input", { type: "checkbox", id: "k-anulados" });
+    const resumenZona = h("div", {});
+    const lista = h("div", {});
+    const espacioForm = h("div", {});
+    const botonAgregar = puedeAgregar
+      ? h("button", { class: "boton boton--primario", type: "button", onclick: () => formularioEvento() }, icono("agregar"), "Agregar al kárdex")
+      : null;
+    cont.replaceChildren(
+      h("div", { class: "cabecera" },
+        h("div", { class: "cabecera__texto" }, h("h1", {}, "Kárdex"), h("p", {}, "Expediente del trabajador: historia laboral, incidencias, notas y documentos")),
+        h("div", { class: "cabecera__acciones" }, botonAgregar)),
+      pestanasHistorial("kardex", () => empleadoId),
+      h("div", { class: "formulario", style: "margin-bottom:.75rem" },
+        h("div", { class: "campo" }, h("label", { for: "k-emp" }, "Trabajador"), selEmp)),
+      espacioForm, resumenZona, filtros,
+      h("label", { class: "nota", style: "display:flex; gap:.4rem; align-items:center; margin:.25rem 0 .5rem" }, chkAnulados, "Mostrar eventos anulados"),
+      lista);
+
+    const empleadoActual = () => empleados.find((e) => e.id === empleadoId);
+    const hoyLocal = () => fechaLocal(new Date(), tzPorSede()[empleadoActual()?.sede_id] ?? "America/Mexico_City");
+    const fmtFecha = (f) => (f ? new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${f}T12:00:00Z`)).replace(/\./g, "") : "");
+
+    function pintarFiltros() {
+      const cuentas = datos ? contarPorCategoria(datos) : {};
+      const boton = (id, texto) => h("button", { class: "boton boton--secundario boton--chico", type: "button", "aria-pressed": String(categoria === id),
+        onclick: () => { categoria = id; pintarFiltros(); pintar(); } }, cuentas[id] != null ? `${texto} (${cuentas[id]})` : texto);
+      filtros.replaceChildren(boton("todas", "Todo"), ...Object.entries(CATEGORIAS_KARDEX).map(([id, t]) => boton(id, t)));
+    }
+    function contarPorCategoria(d) {
+      const items = armarKardex({ empleado: empleadoActual(), eventos: d.eventos, horarios: d.horarios, nombresHorario: d.nombresHorario });
+      const c = { todas: filtrarKardex(items, "todas", verAnulados).length };
+      for (const k of Object.keys(CATEGORIAS_KARDEX)) c[k] = filtrarKardex(items, k, verAnulados).length;
+      return c;
+    }
+
+    async function cargar() {
+      espacioForm.replaceChildren(); resumenZona.replaceChildren();
+      if (!empleadoId || !empleadoActual()) {
+        datos = null; pintarFiltros();
+        lista.replaceChildren(h("div", { class: "vacio" }, h("p", {}, "Elige un trabajador para ver su kárdex.")));
+        return;
+      }
+      lista.replaceChildren(esqueletos(4));
+      try {
+        const [eventos, horarios, catalogo] = await Promise.all([
+          q(sb.from("kardex_eventos").select("*").eq("empleado_id", empleadoId).order("fecha_inicio", { ascending: false }).order("creado_at", { ascending: false }).limit(1000)),
+          q(sb.from("empleado_horarios").select("id,horario_id,vigencia").eq("empleado_id", empleadoId)),
+          q(sb.from("horarios").select("id,nombre").eq("empresa_id", eid())),
+        ]);
+        if (!ctx.vigente()) return;
+        datos = { eventos, horarios, nombresHorario: Object.fromEntries(catalogo.map((x) => [x.id, x.nombre])) };
+        pintarFiltros(); pintar();
+      } catch (err) { if (ctx.vigente()) lista.replaceChildren(bloqueError(err, cargar)); }
+    }
+
+    function pintar() {
+      const emp = empleadoActual();
+      const anio = Number(hoyLocal().slice(0, 4));
+      const r = resumenKardex(datos.eventos, anio);
+      const dato = (etiqueta, valor) => h("div", { class: "chip" }, `${etiqueta}: ${valor}`);
+      resumenZona.replaceChildren(h("div", { class: "resumen", style: "margin:.25rem 0 .5rem" },
+        dato(`Faltas ${anio}`, r.eventos.falta), dato("Retardos", r.eventos.retardo), dato("Permisos", r.eventos.permiso),
+        dato("Días de vacaciones", r.dias.vacaciones), dato("Días de incapacidad", r.dias.incapacidad)));
+      const items = filtrarKardex(armarKardex({ empleado: emp, eventos: datos.eventos, horarios: datos.horarios, nombresHorario: datos.nombresHorario }), categoria, verAnulados);
+      if (!items.length) {
+        lista.replaceChildren(h("div", { class: "vacio" }, h("h2", {}, "Sin movimientos en esta categoría"),
+          puedeAgregar && h("p", {}, "Usa «Agregar al kárdex» para guardar el primero.")));
+        return;
+      }
+      lista.replaceChildren(h("ul", { class: "lista" }, items.map(filaEvento)));
+    }
+
+    function filaEvento(it) {
+      const detalleZona = h("div", {});
+      const rango = it.fecha_fin && it.fecha_fin !== it.fecha ? `${fmtFecha(it.fecha)} al ${fmtFecha(it.fecha_fin)} · ${diasDeRango(it.fecha, it.fecha_fin)} días` : fmtFecha(it.fecha);
+      const meta = [rango, it.con_goce === true ? "con goce de sueldo" : it.con_goce === false ? "sin goce de sueldo" : null].filter(Boolean).join(" · ");
+      const cambio = it.valor_anterior || it.valor_nuevo ? `${it.valor_anterior || "—"} → ${it.valor_nuevo || "—"}` : null;
+      const verDoc = it.archivo_ruta
+        ? h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: (ev) => abrirDocumento(ev.currentTarget, it) }, icono("camara"), "Ver documento")
+        : null;
+      const anular = puedeAdministrar() && it.origen === "evento" && !it.anulado
+        ? h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => formularioAnular(it, detalleZona) }, "Anular")
+        : null;
+      return h("li", { style: "padding:.7rem .9rem; display:grid; gap:.4rem" },
+        h("div", { style: "display:flex; gap:.5rem; align-items:center; flex-wrap:wrap" },
+          h("span", { class: `chip${it.categoria === "nota" && ["llamada_atencion", "acta_administrativa"].includes(it.tipo) ? " chip--aviso" : it.categoria === "nota" && it.tipo === "reconocimiento" ? " chip--ok" : ""}` }, etiquetaKardex(it.categoria, it.tipo)),
+          h("strong", { style: `flex:1; min-width:8rem;${it.anulado ? " text-decoration:line-through; opacity:.6" : ""}` }, it.titulo),
+          it.anulado && h("span", { class: "chip chip--rojo" }, "Anulado"),
+          it.origen === "auto" && h("span", { class: "chip chip--baja" }, "Automático")),
+        h("div", { class: "fila__sub", style: "white-space:normal" }, meta),
+        cambio && h("div", { class: "fila__sub", style: "white-space:normal" }, cambio),
+        it.detalle && h("div", { style: "white-space:pre-wrap" }, it.detalle),
+        it.anulado && h("div", { class: "fila__sub", style: "white-space:normal" }, `Anulado: ${it.motivo_anulacion ?? ""}`),
+        (verDoc || anular) && h("div", { class: "formulario__acciones" }, verDoc, anular),
+        detalleZona);
+    }
+
+    async function abrirDocumento(boton, it) {
+      boton.setAttribute("aria-busy", "true"); boton.disabled = true;
+      try {
+        const { data, error } = await sb.storage.from("kardex").createSignedUrl(it.archivo_ruta, 300);
+        if (error) throw error;
+        const a = h("a", { href: data.signedUrl, target: "_blank", rel: "noopener" });
+        document.body.append(a); a.click(); a.remove();
+      } catch (err) { avisar(mensajeDeError(err), "error"); }
+      finally { boton.removeAttribute("aria-busy"); boton.disabled = false; }
+    }
+
+    function formularioAnular(it, zona) {
+      if (zona.firstChild) { zona.replaceChildren(); return; }
+      const motivo = h("textarea", { class: "entrada", maxlength: "300", "aria-label": "Motivo de la anulación", placeholder: "¿Por qué se anula? (queda guardado)" });
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      let confirmando = false;
+      const boton = h("button", { class: "boton boton--peligro boton--chico", type: "button" }, "Anular evento");
+      boton.addEventListener("click", async () => {
+        error.hidden = true;
+        if (motivo.value.trim().length < 5) { error.textContent = "Escribe el motivo (al menos unas palabras)."; error.hidden = false; return; }
+        if (!confirmando) { confirmando = true; boton.textContent = "Confirmar anulación"; setTimeout(() => { confirmando = false; boton.textContent = "Anular evento"; }, 5000); return; }
+        boton.disabled = true; boton.setAttribute("aria-busy", "true");
+        try {
+          await q(sb.from("kardex_eventos").update({ anulado: true, anulado_por: estado.sesion.user.id, anulado_at: new Date().toISOString(), motivo_anulacion: motivo.value.trim() }).eq("id", it.id));
+          avisar("Evento anulado. Se conserva en el kárdex."); await cargar();
+        } catch (err) { error.textContent = mensajeDeError(err); error.hidden = false; boton.disabled = false; boton.removeAttribute("aria-busy"); }
+      });
+      zona.replaceChildren(h("div", { class: "formulario" }, h("div", { class: "campo" }, motivo), error,
+        h("div", { class: "formulario__acciones" }, boton, h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: () => zona.replaceChildren() }, "Cancelar"))));
+      motivo.focus();
+    }
+
+    function formularioEvento() {
+      if (espacioForm.firstChild) { espacioForm.replaceChildren(); return; }
+      if (!empleadoActual()) { avisar("Primero elige un trabajador.", "error"); return; }
+      const cat = h("select", { class: "entrada", id: "ke-cat" }, Object.entries(CATEGORIAS_KARDEX).map(([v, t]) => h("option", { value: v }, t)));
+      const tipo = h("select", { class: "entrada", id: "ke-tipo" });
+      const titulo = h("input", { class: "entrada", id: "ke-titulo", maxlength: "120", placeholder: "Título corto" });
+      const fecha = h("input", { class: "entrada", id: "ke-fecha", type: "date", value: hoyLocal() });
+      const fechaFin = h("input", { class: "entrada", id: "ke-fin", type: "date" });
+      const goce = h("select", { class: "entrada", id: "ke-goce" }, h("option", { value: "" }, "No aplica"), h("option", { value: "si" }, "Con goce de sueldo"), h("option", { value: "no" }, "Sin goce de sueldo"));
+      const antes = h("input", { class: "entrada", id: "ke-antes", maxlength: "200", placeholder: "Antes (por ejemplo: Cajero)" });
+      const despues = h("input", { class: "entrada", id: "ke-despues", maxlength: "200", placeholder: "Después (por ejemplo: Encargado)" });
+      const detalle = h("textarea", { class: "entrada", id: "ke-detalle", maxlength: "2000", placeholder: "Detalle (opcional)" });
+      const archivo = h("input", { class: "entrada", id: "ke-archivo", type: "file", accept: "application/pdf,image/jpeg,image/png,image/webp" });
+      const cFin = h("div", { class: "campo" }, h("label", { for: "ke-fin" }, "Hasta (opcional)"), fechaFin);
+      const cGoce = h("div", { class: "campo" }, h("label", { for: "ke-goce" }, "Sueldo"), goce);
+      const cCambio = h("div", { class: "cuadricula cuadricula--2" }, h("div", { class: "campo" }, h("label", { for: "ke-antes" }, "Antes"), antes), h("div", { class: "campo" }, h("label", { for: "ke-despues" }, "Después"), despues));
+      const cArchivo = h("div", { class: "campo" }, h("label", { for: "ke-archivo" }, "Archivo (PDF o imagen, máx. 10 MB)"), archivo);
+      const error = h("div", { class: "error-campo", role: "alert", hidden: true });
+      const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Guardar en el kárdex");
+      function ajustar() {
+        tipo.replaceChildren(...Object.entries(TIPOS_KARDEX[cat.value]).map(([v, t]) => h("option", { value: v }, t)));
+        if (cat.value === "incidencia") tipo.value = "falta";
+        const c = cat.value; const t = tipo.value;
+        cFin.hidden = c !== "incidencia";
+        cGoce.hidden = c !== "incidencia";
+        cCambio.hidden = !(c === "laboral" && TIPOS_CON_CAMBIO.includes(t));
+        cArchivo.hidden = c !== "documento";
+      }
+      cat.addEventListener("change", ajustar); tipo.addEventListener("change", () => { const c = cat.value, t = tipo.value; cFin.hidden = !(c === "incidencia"); cGoce.hidden = c !== "incidencia"; cCambio.hidden = !(c === "laboral" && TIPOS_CON_CAMBIO.includes(t)); });
+      ajustar();
+      const form = h("form", { class: "formulario", novalidate: true,
+        onsubmit: async (ev) => {
+          ev.preventDefault(); error.hidden = true;
+          const falla = (t) => { error.textContent = t; error.hidden = false; };
+          const f = archivo.files?.[0] ?? null;
+          const { errores, valores } = validarEventoKardex({
+            categoria: cat.value, tipo: tipo.value, fecha_inicio: fecha.value, fecha_fin: cFin.hidden ? "" : fechaFin.value, titulo: titulo.value, detalle: detalle.value,
+            valor_anterior: antes.value, valor_nuevo: despues.value, con_goce: goce.value === "si" ? true : goce.value === "no" ? false : null,
+          }, cat.value === "documento" && f ? { name: f.name, type: f.type, size: f.size } : null, hoyLocal());
+          const primero = Object.values(errores)[0];
+          if (primero) return falla(primero);
+          guardar.disabled = true; guardar.setAttribute("aria-busy", "true");
+          try {
+            const carga = { ...valores, empresa_id: estado.miembro.empresa_id, empleado_id: empleadoId, creado_por: estado.sesion.user.id };
+            if (cat.value === "documento") {
+              const ruta = rutaArchivoKardex(estado.miembro.empresa_id, empleadoId, crypto.randomUUID(), f.type);
+              const { error: errSubir } = await sb.storage.from("kardex").upload(ruta, f, { contentType: f.type, upsert: false });
+              if (errSubir) throw errSubir;
+              Object.assign(carga, { archivo_ruta: ruta, archivo_nombre: f.name.slice(0, 150), archivo_mime: f.type, archivo_bytes: f.size });
+            }
+            await q(sb.from("kardex_eventos").insert(carga));
+            avisar("Guardado en el kárdex."); await cargar();
+          } catch (err) { falla(mensajeDeError(err)); guardar.disabled = false; guardar.removeAttribute("aria-busy"); }
+        } },
+        h("h2", {}, `Agregar al kárdex de ${empleadoActual().nombre}`),
+        h("div", { class: "cuadricula cuadricula--2" },
+          h("div", { class: "campo" }, h("label", { for: "ke-cat" }, "Categoría"), cat),
+          h("div", { class: "campo" }, h("label", { for: "ke-tipo" }, "Tipo"), tipo)),
+        h("div", { class: "campo" }, h("label", { for: "ke-titulo" }, "Título"), titulo),
+        h("div", { class: "cuadricula cuadricula--2" }, h("div", { class: "campo" }, h("label", { for: "ke-fecha" }, "Fecha"), fecha), cFin),
+        cGoce, cCambio,
+        h("div", { class: "campo" }, h("label", { for: "ke-detalle" }, "Detalle"), detalle),
+        cArchivo, error,
+        h("div", { class: "formulario__acciones" }, guardar,
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar")));
+      espacioForm.replaceChildren(form);
+      titulo.focus();
+    }
+
+    try {
+      empleados = await q(sb.from("empleados").select("id,nombre,sede_id,estado,fecha_ingreso,fecha_baja").eq("empresa_id", eid()).order("nombre"));
+    } catch (err) { if (ctx.vigente()) cont.replaceChildren(bloqueError(err, () => vistaKardex(cont, ctx))); return; }
+    if (!ctx.vigente()) return;
+    selEmp.replaceChildren(h("option", { value: "" }, "Elige un trabajador"),
+      ...empleados.map((e) => h("option", { value: e.id, selected: e.id === empleadoId }, e.estado === "baja" ? `${e.nombre} (baja)` : e.nombre)));
+    selEmp.addEventListener("change", () => { empleadoId = selEmp.value; cargar(); });
+    chkAnulados.addEventListener("change", () => { verAnulados = chkAnulados.checked; if (datos) { pintarFiltros(); pintar(); } });
+    pintarFiltros();
+    await cargar();
+  }
+
+  // Dos pestañas hermanas: las checadas del trabajador (Historial) y su expediente (Kárdex).
+  function pestanasHistorial(actual, empleadoDe) {
+    const enlace = (id, texto) => h("a", { class: "boton boton--secundario boton--chico", "aria-pressed": String(actual === id),
+      href: `#/${id}`, onclick: (ev) => { const e = empleadoDe(); if (e) { ev.preventDefault(); location.hash = `#/${id}?empleado=${encodeURIComponent(e)}`; } } }, texto);
+    return h("div", { class: "resumen" }, enlace("historial", "Checadas"), enlace("kardex", "Kárdex"));
   }
 
   // ---------- Administrar ----------
@@ -2047,6 +2279,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           h("li", {}, h("strong", {}, "Hoy: "), "toca a un empleado para ver su hora, su selfie y su ubicación. Lo que falta aparece primero, en rojo."),
           h("li", {}, h("strong", {}, "Equipo: "), "agrega al empleado y mándale la invitación por WhatsApp (enlace o código QR); él solo acepta el aviso de privacidad."),
           h("li", {}, h("strong", {}, "Historial: "), "elige a un trabajador y un rango de fechas para ver todos sus registros. Toca Corregir para cambiar la hora o el tipo, o anular un registro, y Agregar registro si olvidó dar entrada o salida. Siempre pide un motivo."),
+          h("li", {}, h("strong", {}, "Kárdex: "), "el expediente de cada trabajador (pestaña Kárdex junto a Historial, o el botón Kárdex en Equipo). Guarda su historia laboral (alta, cambios de puesto, sede, horario o sueldo, baja), incidencias (faltas, retardos, permisos, incapacidades, vacaciones), notas y sanciones, y documentos en PDF o imagen. Los eventos no se editan ni se borran: solo el dueño o un administrador pueden anularlos, con motivo."),
           h("li", {}, h("strong", {}, "Correcciones: "), "los registros originales nunca se editan ni se borran. Cada cambio queda con quién lo hizo, cuándo y por qué. Aquí se aprueban las que pide el empleado desde WhatsApp."),
           h("li", {}, h("strong", {}, "Reportes: "), "asistencias, faltas, retardos y horas por periodo; se descargan en Excel, CSV o PDF."),
           h("li", {}, h("strong", {}, "Señales: "), "una señal no acusa a nadie; solo avisa que conviene revisar el registro.")),
@@ -2054,11 +2287,11 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         h("div", { class: "tutoriales" }, TUTORIALES.map((t) => h("details", { class: "tutorial" },
           h("summary", {}, t.titulo),
           h("img", { src: `ayuda/${t.archivo}`, alt: t.alt, loading: "lazy", width: "820", height: "584" })))),
-        h("h2", { class: "seccion" }, "Novedades de la versión 2.0"),
+        h("h2", { class: "seccion" }, "Novedades de la versión 2.1"),
         h("ul", { class: "ayuda" },
-          h("li", {}, h("strong", {}, "Historial por trabajador: "), "nueva sección para ver todos los registros de una persona día por día."),
-          h("li", {}, h("strong", {}, "Corregir al momento: "), "cambia la hora o el tipo de un registro, anúlalo o agrega uno olvidado. Se aplica al instante y el original se conserva."),
-          h("li", {}, h("strong", {}, "Mi historial en WhatsApp: "), "el empleado ve sus últimos 10 registros desde el menú del bot."),
+          h("li", {}, h("strong", {}, "Kárdex por empleado: "), "expediente con historia laboral, incidencias y ausencias, notas y sanciones, y documentos. Lo ven y lo llenan el dueño, los administradores y los supervisores (de sus sedes)."),
+          h("li", {}, h("strong", {}, "Línea de tiempo automática: "), "el ingreso, la baja y los cambios de horario que ya estaban en el sistema aparecen solos en el kárdex."),
+          h("li", {}, h("strong", {}, "Versión 2.0: "), "Historial por trabajador, corrección de checadas al momento, Mi historial en WhatsApp y empleados sin geocerca."),
           h("li", {}, h("strong", {}, "Lugares: "), "ahora puedes eliminar sedes y geocercas que no tengan historial."),
           h("li", {}, h("strong", {}, "Registro desde cualquier lugar: "), "un empleado puede quedar sin geocerca; sus registros se anotan como fuera de ella.")),
         h("h2", { class: "seccion" }, "Desarrollador"),

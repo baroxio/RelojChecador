@@ -410,3 +410,76 @@ test("historial: agrupa por día local, el más reciente primero", () => {
   const g = agruparPorDia(items, "America/Mexico_City");
   assert.deepEqual(g.map((x) => [x.fecha, x.items.length]), [["2026-11-11", 1], ["2026-11-10", 2]]);
 });
+
+import {
+  armarKardex, diasDeRango, validarEventoKardex, resumenKardex, filtrarKardex, rutaArchivoKardex, etiquetaKardex, TIPOS_KARDEX,
+} from "./logic.js";
+
+test("kárdex: días de rango incluye ambos extremos", () => {
+  assert.equal(diasDeRango("2026-11-10", "2026-11-12"), 3);
+  assert.equal(diasDeRango("2026-11-10", null), 1);
+  assert.equal(diasDeRango("2026-11-10", "2026-11-09"), 0);
+  assert.equal(diasDeRango("", null), 0);
+});
+
+test("kárdex: valida el evento", () => {
+  const ok = validarEventoKardex({ categoria: "incidencia", tipo: "permiso", fecha_inicio: "2026-11-10", fecha_fin: "2026-11-11", titulo: "  Cita  médica ", con_goce: true }, null, "2026-11-20");
+  assert.deepEqual(ok.errores, {});
+  assert.equal(ok.valores.titulo, "Cita médica");
+  assert.equal(ok.valores.con_goce, true);
+  assert.equal(ok.valores.valor_nuevo, null);
+  assert.ok(validarEventoKardex({ categoria: "incidencia", tipo: "nada", fecha_inicio: "2026-11-10", titulo: "x" }, null).errores.tipo);
+  assert.ok(validarEventoKardex({ categoria: "nota", tipo: "nota", fecha_inicio: "2026-11-10", titulo: "x" }, null).errores.titulo);
+  assert.ok(validarEventoKardex({ categoria: "nota", tipo: "nota", fecha_inicio: "2026-11-10", fecha_fin: "2026-11-01", titulo: "Hola" }, null).errores.fecha_fin);
+  assert.ok(validarEventoKardex({ categoria: "nota", tipo: "nota", fecha_inicio: "mañana", titulo: "Hola" }, null).errores.fecha);
+  assert.ok(validarEventoKardex({ categoria: "nota", tipo: "nota", fecha_inicio: "2030-01-01", titulo: "Hola" }, null, "2026-11-20").errores.fecha, "no muy lejos en el futuro");
+  const cambio = validarEventoKardex({ categoria: "laboral", tipo: "cambio_sueldo", fecha_inicio: "2026-11-10", titulo: "Aumento", valor_anterior: " $200 ", valor_nuevo: "$230" }, null);
+  assert.equal(cambio.valores.valor_anterior, "$200");
+  assert.equal(cambio.valores.valor_nuevo, "$230");
+});
+
+test("kárdex: un documento exige archivo válido", () => {
+  const base = { categoria: "documento", tipo: "contrato", fecha_inicio: "2026-11-10", titulo: "Contrato indeterminado" };
+  assert.ok(validarEventoKardex(base, null).errores.archivo);
+  assert.ok(validarEventoKardex(base, { name: "a.exe", type: "application/x-msdownload", size: 10 }).errores.archivo);
+  assert.ok(validarEventoKardex(base, { name: "a.pdf", type: "application/pdf", size: 11 * 1024 * 1024 }).errores.archivo);
+  assert.deepEqual(validarEventoKardex(base, { name: "a.pdf", type: "application/pdf", size: 5000 }).errores, {});
+});
+
+test("kárdex: ruta del archivo", () => {
+  assert.equal(rutaArchivoKardex("E", "P", "U", "application/pdf"), "E/P/U.pdf");
+  assert.equal(rutaArchivoKardex("E", "P", "U", "image/jpeg"), "E/P/U.jpg");
+  assert.equal(etiquetaKardex("nota", "acta_administrativa"), "Acta administrativa");
+  assert.ok(Object.keys(TIPOS_KARDEX).length === 4);
+});
+
+test("kárdex: línea de tiempo une eventos con ingreso, baja y horarios sin duplicar", () => {
+  const empleado = { fecha_ingreso: "2026-10-01", fecha_baja: "2026-11-30" };
+  const eventos = [
+    { id: "e1", categoria: "laboral", tipo: "alta", fecha_inicio: "2026-10-01", titulo: "Alta", creado_at: "2026-10-01T10:00:00Z" },
+    { id: "e2", categoria: "incidencia", tipo: "falta", fecha_inicio: "2026-11-05", titulo: "Falta", creado_at: "2026-11-06T10:00:00Z" },
+    { id: "e3", categoria: "nota", tipo: "nota", fecha_inicio: "2026-11-05", titulo: "Nota", creado_at: "2026-11-07T10:00:00Z", anulado: true, motivo_anulacion: "error" },
+  ];
+  const horarios = [{ id: "h1", horario_id: "H", vigencia: "[2026-10-01,2026-11-01)" }, { id: "h2", horario_id: "H2", vigencia: "[2026-11-01,)" }];
+  const k = armarKardex({ empleado, eventos, horarios, nombresHorario: { H: "Matutino", H2: "Vespertino" } });
+  assert.deepEqual(k.map((x) => x.id), ["auto-baja", "e3", "e2", "auto-horario-h2", "e1", "auto-horario-h1"], "el alta manual evita el alta automática; el más reciente primero");
+  assert.equal(k.find((x) => x.id === "auto-horario-h2").titulo, "Horario: Vespertino");
+  assert.equal(k.find((x) => x.id === "auto-baja").origen, "auto");
+  assert.equal(filtrarKardex(k, "todas").some((x) => x.anulado), false, "los anulados se ocultan por defecto");
+  assert.equal(filtrarKardex(k, "todas", true).some((x) => x.anulado), true);
+  assert.deepEqual(filtrarKardex(k, "incidencia").map((x) => x.id), ["e2"]);
+});
+
+test("kárdex: resumen anual de incidencias", () => {
+  const ev = [
+    { categoria: "incidencia", tipo: "vacaciones", fecha_inicio: "2026-07-01", fecha_fin: "2026-07-05" },
+    { categoria: "incidencia", tipo: "falta", fecha_inicio: "2026-03-02" },
+    { categoria: "incidencia", tipo: "falta", fecha_inicio: "2026-03-09", anulado: true },
+    { categoria: "incidencia", tipo: "falta", fecha_inicio: "2025-12-30" },
+    { categoria: "nota", tipo: "nota", fecha_inicio: "2026-03-02" },
+  ];
+  const r = resumenKardex(ev, 2026);
+  assert.equal(r.eventos.falta, 1);
+  assert.equal(r.dias.vacaciones, 5);
+  assert.equal(r.eventos.vacaciones, 1);
+});

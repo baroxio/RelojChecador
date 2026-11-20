@@ -68,8 +68,21 @@ for (const [emp, dias] of Object.entries(PATRONES)) {
   });
 }
 
+// Kárdex de ejemplo (Ana López).
+const ev = (id, categoria, tipo, fecha_inicio, titulo, extra = {}) => ({ id, empleado_id: "e1", categoria, tipo, fecha_inicio, fecha_fin: null, titulo, detalle: null, valor_anterior: null, valor_nuevo: null, con_goce: null, archivo_ruta: null, archivo_nombre: null, archivo_mime: null, archivo_bytes: null, creado_por: "u1", creado_at: `${fecha_inicio}T15:00:00Z`, anulado: false, ...extra });
+const anioDemo = hoy.slice(0, 4);
+datos.kardex_eventos = [
+  ev("k1", "laboral", "alta", `${anioDemo}-01-05`, "Alta como cajera", { detalle: "Contrato por tiempo indeterminado." }),
+  ev("k2", "laboral", "cambio_sueldo", `${anioDemo}-06-01`, "Aumento por desempeño", { valor_anterior: "$230 diarios", valor_nuevo: "$260 diarios" }),
+  ev("k3", "incidencia", "vacaciones", `${anioDemo}-07-14`, "Vacaciones de verano", { fecha_fin: `${anioDemo}-07-18`, con_goce: true }),
+  ev("k4", "incidencia", "falta", `${anioDemo}-03-03`, "Falta sin aviso", { con_goce: false }),
+  ev("k5", "nota", "reconocimiento", `${anioDemo}-09-12`, "Mejor atención del mes", { detalle: "Felicitada por clientes frecuentes." }),
+  ev("k6", "nota", "llamada_atencion", `${anioDemo}-04-02`, "Llegadas tarde", { detalle: "Se acordó puntualidad.", anulado: true, motivo_anulacion: "Capturado por error", anulado_at: `${anioDemo}-04-03T15:00:00Z` }),
+  ev("k7", "documento", "contrato", `${anioDemo}-01-05`, "Contrato firmado", { archivo_ruta: "emp/e1/contrato.pdf", archivo_nombre: "contrato.pdf", archivo_mime: "application/pdf", archivo_bytes: 184000 }),
+];
+
 // Las consultas del panel filtran por la empresa activa.
-for (const t of ["sedes", "empleados", "registros_efectivos", "registros", "horarios", "empleado_horarios", "correcciones"]) {
+for (const t of ["sedes", "empleados", "registros_efectivos", "registros", "horarios", "empleado_horarios", "correcciones", "kardex_eventos"]) {
   for (const fila of datos[t]) fila.empresa_id = "emp";
 }
 datos.plataforma_admins = [{ user_id: "u1" }];
@@ -115,7 +128,7 @@ const sb = {
     getSession: async () => ({ data: { session: { user: { id: "u1", email: "dueno@ejemplo.mx", user_metadata: { nombre: "Laura Gómez" } }, access_token: "demo" } } }),
     onAuthStateChange() {}, signInWithPassword: async () => ({ error: null }), signOut: async () => { location.reload(); },
   },
-  storage: { from: () => ({ createSignedUrl: async () => ({ data: { signedUrl: selfie }, error: null }) }) },
+  storage: { from: () => ({ upload: async () => ({ data: {}, error: null }), createSignedUrl: async () => ({ data: { signedUrl: selfie }, error: null }) }) },
 };
 
 // Las invitaciones de ejemplo no llaman a ningún servidor.

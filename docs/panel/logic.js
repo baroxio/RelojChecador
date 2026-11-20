@@ -720,3 +720,135 @@ export function agruparPorDia(items, tz) {
   }
   return [...grupos.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([fecha, lista]) => ({ fecha, items: lista }));
 }
+
+// --- Kárdex del empleado ----------------------------------------------------
+
+export const CATEGORIAS_KARDEX = {
+  laboral: "Historia laboral",
+  incidencia: "Incidencias y ausencias",
+  nota: "Notas y sanciones",
+  documento: "Documentos",
+};
+
+/** Tipos permitidos por categoría (los mismos que valida la base de datos). */
+export const TIPOS_KARDEX = {
+  laboral: {
+    alta: "Alta", baja: "Baja", reingreso: "Reingreso", cambio_puesto: "Cambio de puesto", cambio_sede: "Cambio de sede",
+    cambio_horario: "Cambio de horario", cambio_sueldo: "Cambio de sueldo", otro: "Otro movimiento",
+  },
+  incidencia: {
+    falta: "Falta", retardo: "Retardo", permiso: "Permiso", incapacidad: "Incapacidad", vacaciones: "Vacaciones",
+    dia_economico: "Día económico", otra: "Otra incidencia",
+  },
+  nota: { nota: "Nota", llamada_atencion: "Llamada de atención", acta_administrativa: "Acta administrativa", reconocimiento: "Reconocimiento" },
+  documento: {
+    contrato: "Contrato", identificacion: "Identificación", curp: "CURP", rfc: "RFC", nss: "NSS / IMSS",
+    comprobante_domicilio: "Comprobante de domicilio", certificado_medico: "Certificado médico", otro: "Otro documento",
+  },
+};
+
+/** Tipos que normalmente cubren un rango de fechas. */
+export const TIPOS_CON_RANGO = ["permiso", "incapacidad", "vacaciones", "dia_economico"];
+/** Tipos laborales que guardan «antes → después». */
+export const TIPOS_CON_CAMBIO = ["cambio_puesto", "cambio_sede", "cambio_horario", "cambio_sueldo"];
+
+export const TIPOS_DOCUMENTO_MIME = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+export const MAX_BYTES_DOCUMENTO = 10 * 1024 * 1024;
+
+export function etiquetaKardex(categoria, tipo) {
+  return TIPOS_KARDEX[categoria]?.[tipo] ?? tipo;
+}
+
+/** Días naturales de un rango, ambos extremos incluidos (1 si no hay fecha final). */
+export function diasDeRango(inicio, fin) {
+  if (!inicio) return 0;
+  const f = fin || inicio;
+  const d = Math.round((Date.parse(`${f}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`)) / 86_400_000) + 1;
+  return d > 0 ? d : 0;
+}
+
+/**
+ * Valida el formulario de un evento del kárdex. Devuelve { errores, valores }.
+ * `archivo` es { name, type, size } o null.
+ */
+export function validarEventoKardex({ categoria, tipo, fecha_inicio, fecha_fin, titulo, detalle, valor_anterior, valor_nuevo, con_goce }, archivo, hoy) {
+  const errores = {};
+  if (!TIPOS_KARDEX[categoria]?.[tipo]) errores.tipo = "Elige el tipo.";
+  const ini = String(fecha_inicio ?? "").trim();
+  const fin = String(fecha_fin ?? "").trim() || null;
+  const fechaOk = (f) => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(f));
+  if (!fechaOk(ini)) errores.fecha = "Escribe una fecha válida.";
+  else if (hoy && ini > sumarDias(hoy, 366)) errores.fecha = "La fecha está demasiado lejos en el futuro.";
+  if (fin && !fechaOk(fin)) errores.fecha_fin = "La fecha final no es válida.";
+  else if (fin && ini && fin < ini) errores.fecha_fin = "La fecha final no puede ser anterior a la inicial.";
+  const tit = String(titulo ?? "").trim().replace(/\s+/g, " ");
+  if (tit.length < 2) errores.titulo = "Escribe un título corto.";
+  else if (tit.length > 120) errores.titulo = "El título es muy largo (máximo 120 letras).";
+  const det = String(detalle ?? "").trim() || null;
+  if (det && det.length > 2000) errores.detalle = "El detalle es muy largo (máximo 2000 letras).";
+  if (categoria === "documento") {
+    if (!archivo) errores.archivo = "Elige el archivo del documento.";
+    else if (!TIPOS_DOCUMENTO_MIME.includes(archivo.type)) errores.archivo = "Solo PDF o imagen (JPG, PNG, WebP).";
+    else if (archivo.size > MAX_BYTES_DOCUMENTO) errores.archivo = "El archivo pesa más de 10 MB.";
+    else if (archivo.size <= 0) errores.archivo = "El archivo está vacío.";
+  }
+  const cambio = categoria === "laboral" && TIPOS_CON_CAMBIO.includes(tipo);
+  const valores = {
+    categoria, tipo, fecha_inicio: ini, fecha_fin: fin, titulo: tit, detalle: det,
+    valor_anterior: cambio ? String(valor_anterior ?? "").trim().slice(0, 200) || null : null,
+    valor_nuevo: cambio ? String(valor_nuevo ?? "").trim().slice(0, 200) || null : null,
+    con_goce: categoria === "incidencia" && typeof con_goce === "boolean" ? con_goce : null,
+  };
+  return { errores, valores };
+}
+
+/** Ruta del archivo en el bucket «kardex»: {empresa}/{empleado}/{uuid}.{ext}. */
+export function rutaArchivoKardex(empresaId, empleadoId, uuid, mime) {
+  const ext = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[mime] ?? "bin";
+  return `${empresaId}/${empleadoId}/${uuid}.${ext}`;
+}
+
+/**
+ * Línea de tiempo del kárdex: los eventos guardados más los hechos que ya están en el sistema
+ * (ingreso, baja y asignaciones de horario), sin duplicar los que ya se capturaron a mano.
+ * Más reciente primero. `horarios` = [{vigencia, horario_id}], `nombresHorario` = {id: nombre}.
+ */
+export function armarKardex({ empleado, eventos = [], horarios = [], nombresHorario = {} }) {
+  const items = eventos.map((e) => ({
+    origen: "evento", id: e.id, categoria: e.categoria, tipo: e.tipo, fecha: e.fecha_inicio, fecha_fin: e.fecha_fin ?? null,
+    titulo: e.titulo, detalle: e.detalle ?? null, valor_anterior: e.valor_anterior ?? null, valor_nuevo: e.valor_nuevo ?? null,
+    con_goce: e.con_goce ?? null, archivo_ruta: e.archivo_ruta ?? null, archivo_nombre: e.archivo_nombre ?? null,
+    archivo_mime: e.archivo_mime ?? null, archivo_bytes: e.archivo_bytes ?? null,
+    creado_at: e.creado_at ?? null, anulado: !!e.anulado, motivo_anulacion: e.motivo_anulacion ?? null, anulado_at: e.anulado_at ?? null,
+  }));
+  const manual = (tipo, fecha) => eventos.some((e) => e.categoria === "laboral" && e.tipo === tipo && e.fecha_inicio === fecha && !e.anulado);
+  const auto = (id, tipo, fecha, titulo, detalle = null) =>
+    items.push({ origen: "auto", id, categoria: "laboral", tipo, fecha, fecha_fin: null, titulo, detalle, valor_anterior: null, valor_nuevo: null,
+      con_goce: null, archivo_ruta: null, archivo_nombre: null, archivo_mime: null, archivo_bytes: null, creado_at: null, anulado: false, motivo_anulacion: null, anulado_at: null });
+  if (empleado?.fecha_ingreso && !manual("alta", empleado.fecha_ingreso)) auto("auto-alta", "alta", empleado.fecha_ingreso, "Ingreso a la empresa", "Fecha de ingreso registrada en el equipo.");
+  if (empleado?.fecha_baja && !manual("baja", empleado.fecha_baja)) auto("auto-baja", "baja", empleado.fecha_baja, "Baja de la empresa", "Fecha de baja registrada en el equipo.");
+  for (const a of horarios) {
+    const v = parsearVigencia(a.vigencia);
+    if (!v?.desde || manual("cambio_horario", v.desde)) continue;
+    auto(`auto-horario-${a.id ?? v.desde}`, "cambio_horario", v.desde, `Horario: ${nombresHorario[a.horario_id] ?? "asignado"}`, "Asignación de horario registrada en el sistema.");
+  }
+  return items.sort((a, b) => b.fecha.localeCompare(a.fecha) || String(b.creado_at ?? "").localeCompare(String(a.creado_at ?? "")));
+}
+
+/** Conteos y días por tipo de incidencia en un año; ignora los eventos anulados. */
+export function resumenKardex(eventos, anio) {
+  const out = { falta: 0, retardo: 0, permiso: 0, incapacidad: 0, vacaciones: 0, dia_economico: 0, otra: 0 };
+  const dias = { ...out };
+  for (const e of eventos) {
+    if (e.categoria !== "incidencia" || e.anulado) continue;
+    if (!String(e.fecha_inicio ?? e.fecha).startsWith(String(anio))) continue;
+    out[e.tipo] = (out[e.tipo] ?? 0) + 1;
+    dias[e.tipo] = (dias[e.tipo] ?? 0) + diasDeRango(e.fecha_inicio ?? e.fecha, e.fecha_fin);
+  }
+  return { eventos: out, dias };
+}
+
+/** Filtra la línea de tiempo por categoría ("todas" deja todo) y oculta anulados si se pide. */
+export function filtrarKardex(items, categoria = "todas", verAnulados = false) {
+  return items.filter((i) => (categoria === "todas" || i.categoria === categoria) && (verAnulados || !i.anulado));
+}

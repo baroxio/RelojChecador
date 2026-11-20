@@ -26,6 +26,7 @@ erDiagram
   sesiones_registro ||--o| registros : "se completa en"
   empleados ||--o{ registros : tiene
   registros ||--o{ correcciones : "se corrige con"
+  empleados ||--o{ kardex_eventos : "expediente"
   empleados ||--o{ medios : "selfies"
   numeros_whatsapp ||--o{ vinculos_whatsapp : recibe
   mensajes_whatsapp }o--|| numeros_whatsapp : "bitácora cruda"
@@ -39,6 +40,7 @@ erDiagram
 | Multiempresa | `empresa_id` en cada fila y llaves foráneas compuestas `(id, empresa_id)` | La base impide mezclar datos de dos empresas, no solo la aplicación |
 | Registro inmutable | `registros` solo acepta `insert`; un trigger bloquea `update`, `delete` y `truncate` | Es la evidencia ante la STPS |
 | Correcciones | Tabla `correcciones` (agregar, modificar hora, anular) con aprobación; la vista `registros_efectivos` las aplica (también el cambio de tipo con `nuevo_tipo`, migración `20261115000100`) | Se conserva el original y la traza |
+| Kárdex | Tabla `kardex_eventos` (laboral, incidencia, nota, documento) con trigger que solo permite anular; bucket privado `kardex` para documentos; lo ven dueño, admin y supervisor de la sede (migración `20261120000100`) | Expediente auditable; los eventos no se editan ni se borran |
 | Hora que vale | `ocurrido_at` = hora del servidor; `ts_cliente` = la que reporta WhatsApp | Responde la crítica de Lenox HR de que la hora es la del mensaje |
 | Intento vs. registro | `sesiones_registro` guarda el intento (ubicación y luego selfie) y su rechazo; `registros` solo lo completado | El flujo tiene dos mensajes; los rechazos también quedan como evidencia |
 | Regla de WhatsApp | `check`: un registro por WhatsApp exige ubicación y `dentro_geocerca` | La regla vive en la base |

@@ -88,6 +88,14 @@ Pantalla **Historial** en el menú (`#/historial?empleado=ID`), también desde l
 - Relleno por horario: el 2026-11-15 se agregaron por SQL 24 entradas y salidas faltantes del 9 al 14 de noviembre (David Rodríguez, Rigoberto Barocio y Verónica Velasco) como correcciones aprobadas con el motivo «Rellenado por el dueño según el horario». No son checadas reales y así quedan en el historial.
 - Probado con la interfaz simulada (jsdom) y la lógica pura. **Sin probar:** en un navegador con datos reales.
 
+## Fase 8: kárdex por empleado (versión 2.1.0)
+Pestaña **Kárdex** (`#/kardex?empleado=ID`) con el expediente de cada trabajador.
+- Categorías: historia laboral, incidencias y ausencias, notas y sanciones, documentos. Línea de tiempo con filtros, resumen anual de incidencias y «Mostrar anulados». La lógica pura (`armarKardex`, `validarEventoKardex`, `resumenKardex`) está en `docs/panel/logic.js`, con pruebas.
+- Permisos: dueño, admin y supervisor (de sus sedes) ven y agregan; solo dueño y admin anulan, con motivo. Eventos inmutables por trigger; bitácora en cada cambio. Documentos en el bucket privado `kardex`.
+- Migración `supabase/migrations/20261120000100_kardex_empleado.sql`: el SQL se validó en la base real dentro de una transacción que se revirtió (restricciones, trigger de inmutabilidad y políticas). **Pendiente: aplicarla** en el SQL Editor.
+- Probado con jsdom (ver, agregar incidencia, subir documento, anular, enlace desde Equipo). **Sin probar:** en un navegador con datos reales, ni la subida real a Storage.
+- Ideas para después: saldo de vacaciones por antigüedad (LFT), exportar el kárdex a PDF, avisos de documentos por vencer, borrado automático por política de retención.
+
 ## Decisiones pendientes
 1. ~~RH~~ Resuelto: RH = administrador de la empresa. Falta decidir quién será administrador de la plataforma (ver Fase 2).
 2. ~~Registro sin internet~~ Resuelto por defecto: cuenta como registro con señal y corrección pendiente (ver Fase 4). Se puede cambiar si prefieres que solo quede como aviso.

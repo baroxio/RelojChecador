@@ -2,7 +2,7 @@
 
 Control de asistencia por WhatsApp para empresas mexicanas. El empleado registra entrada, salida y pausas desde su WhatsApp (con ubicación y selfie); el dueño o supervisor lo ve y lo corrige en un panel web instalable.
 
-Versión del panel: **2.0.3**. Actualizado: 2026-11-15. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
+Versión del panel: **2.1.0**. Actualizado: 2026-11-20. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
 
 ![Mapa de tecnologías](img/mapa-tecnologias.svg)
 
@@ -61,14 +61,23 @@ En **Historial** se elige a un trabajador y un rango de fechas (por defecto, 14 
 
 Todo cambio pide un **motivo** y queda como una corrección ya aprobada, con quién la hizo (`solicitada_por` y `resuelto_por`). El registro original nunca se modifica ni se borra: se muestra como «original» y los reportes usan la hora corregida. Un registro anulado o agregado a mano no se puede deshacer desde el panel. Requiere la migración `20261115000100_corregir_tipo_de_registro.sql` para poder cambiar el tipo.
 
-### 2.5 Despliegue
+### 2.5 Kárdex del empleado
+Pestaña **Kárdex** junto a Historial (`#/kardex?empleado=ID`; también el botón «Kárdex» en la ficha de Equipo). Es el expediente de cada trabajador, en cuatro categorías:
+- **Historia laboral:** alta, baja, reingreso, cambio de puesto, sede, horario o sueldo (con «antes → después»).
+- **Incidencias y ausencias:** falta, retardo, permiso, incapacidad, vacaciones, día económico; con rango de fechas y con o sin goce de sueldo. Arriba se ve el resumen del año (faltas, retardos, permisos, días de vacaciones e incapacidad).
+- **Notas y sanciones:** nota, llamada de atención, acta administrativa, reconocimiento.
+- **Documentos:** contrato, identificación, CURP, RFC, NSS, comprobante de domicilio, certificado médico u otro; PDF o imagen de hasta 10 MB, guardados en el bucket privado `kardex` (ruta `empresa/empleado/uuid.ext`) y abiertos con enlaces firmados de 5 minutos.
+
+La línea de tiempo suma, sin duplicar, lo que el sistema ya sabía: fecha de ingreso, fecha de baja y asignaciones de horario (marcados «Automático»). Dueño, administrador y supervisor (solo de sus sedes) ven y agregan; **solo dueño y administrador anulan**, con motivo. Los eventos son inmutables (un trigger bloquea editar y borrar; solo se puede marcar «anulado»), y toda acción queda en `bitacora`. El rol «consulta» no ve el kárdex por llevar datos sensibles. Requiere la migración `20261120000100_kardex_empleado.sql`.
+
+### 2.6 Despliegue
 - **Panel:** `git pull` en el NAS. Se sube `VERSION` en `docs/panel/sw.js` para que los teléfonos actualicen la app.
 - **Funciones:** un push a `main` que toque `supabase/functions/**` corre las pruebas y despliega por GitHub Actions. A mano: `supabase functions deploy <nombre> --project-ref bclmvyifdxalnfxzjmyj --yes` (el webhook con `--no-verify-jwt`).
 - **Base de datos:** las migraciones de `supabase/migrations` se aplican a mano (SQL Editor o CLI).
 
 ## 3. Modelo de datos (resumen)
 
-Tablas principales: `empresas`, `sedes`, `geocercas`, `miembros` y `miembro_sedes`, `horarios` y `horario_dias`, `empleados`, `vinculos_whatsapp`, `invitaciones`, `consentimientos`, `sesiones_registro`, `registros`, `correcciones`, `medios`, `mensajes_whatsapp`, `numeros_whatsapp`, `bitacora`, `dias_festivos`. Detalle y diagrama en [`esquema-bd.md`](esquema-bd.md).
+Tablas principales: `empresas`, `sedes`, `geocercas`, `miembros` y `miembro_sedes`, `horarios` y `horario_dias`, `empleados`, `vinculos_whatsapp`, `invitaciones`, `consentimientos`, `sesiones_registro`, `registros`, `correcciones`, `kardex_eventos`, `medios`, `mensajes_whatsapp`, `numeros_whatsapp`, `bitacora`, `dias_festivos`. Detalle y diagrama en [`esquema-bd.md`](esquema-bd.md).
 
 Decisiones que conviene recordar:
 - **Multiempresa:** `empresa_id` en cada fila y llaves foráneas compuestas `(id, empresa_id)`; la base impide mezclar empresas.
@@ -82,7 +91,7 @@ Decisiones que conviene recordar:
 |---|---|
 | Administrador de plataforma | Crear empresas y sus dueños. |
 | Dueño / admin | Todo en su empresa: usuarios, sedes, geocercas, horarios, empleados, correcciones. |
-| Supervisor | Ver y corregir solo las sedes que se le asignan. |
+| Supervisor | Ver y corregir solo las sedes que se le asignan; ver y agregar kárdex de esas sedes. |
 
 - RLS en todas las tablas; el supervisor ve solo sus sedes.
 - Las escrituras operativas (bot, usuarios) usan la clave de servicio **solo dentro de las Edge Functions**.
@@ -135,6 +144,7 @@ La versión se ve en el panel, en **Cuenta → Versión de la aplicación**, y v
 
 | Versión | Fecha | Qué trae |
 |---|---|---|
+| **2.1.0** | 2026-11-20 | **Kárdex por empleado:** historia laboral, incidencias y ausencias, notas y sanciones, y documentos (PDF o imagen) con anulación auditada. Tabla `kardex_eventos`, bucket `kardex` y migración `20261120000100`. |
 | **2.0.3** | 2026-11-15 | Arreglo: «Versión de la aplicación» en Cuenta ya no se queda en «desconocida» tras una recarga forzada (se la pide al service worker aunque no controle la página y, si no contesta, la lee de `sw.js`). |
 | **2.0.2** | 2026-11-15 | Arreglos: la pantalla Cuenta mostraba la palabra «null» cuando solo hay una empresa; y el service worker ahora pide sus archivos a la red al actualizar (antes podía guardar copias viejas que el navegador ya tenía). |
 | **2.0.1** | 2026-11-15 | Tutoriales animados en la ayuda de la app (Cuenta → Tutoriales en imágenes): corregir o agregar una checada, invitar a un empleado y ver un reporte. Los GIF están en `docs/panel/ayuda/` y se grabaron con la vista de ejemplo (`demo.html`), sin datos reales. |

@@ -87,7 +87,7 @@ function crearSb(sesion) {
       updateUser: async (v) => { llamadas.push(["updateUser", v]); return { error: null }; },
       refreshSession: async () => ({}),
     },
-    storage: { from: () => ({ createSignedUrl: async () => ({ data: { signedUrl: "https://ejemplo.test/selfie.jpg" }, error: null }) }) },
+    storage: { from: (b) => ({ upload: async (ruta, f, o) => { llamadas.push(["upload", b, ruta, o]); return { data: {}, error: null }; }, createSignedUrl: async () => ({ data: { signedUrl: "https://ejemplo.test/selfie.jpg" }, error: null }) }) },
   };
 }
 
@@ -508,6 +508,78 @@ assert.equal(botonQR.textContent, "Ocultar QR");
 botonQR.click();
 assert.ok(document.querySelector(".invitacion__qr").hidden, "el QR se vuelve a ocultar");
 console.log("OK invitación: se puede mostrar el código QR");
+
+// 5-ter. Kárdex del empleado: ver, agregar incidencia, subir documento y anular
+datos.kardex_eventos = [
+  { id: "k1", empresa_id: "emp", empleado_id: "e1", categoria: "laboral", tipo: "cambio_sueldo", fecha_inicio: "2026-06-01", fecha_fin: null, titulo: "Aumento por desempeño", detalle: null, valor_anterior: "$230", valor_nuevo: "$260", con_goce: null, archivo_ruta: null, creado_at: "2026-06-01T10:00:00Z", anulado: false },
+  { id: "k2", empresa_id: "emp", empleado_id: "e1", categoria: "incidencia", tipo: "vacaciones", fecha_inicio: "2026-07-14", fecha_fin: "2026-07-18", titulo: "Vacaciones de verano", detalle: null, valor_anterior: null, valor_nuevo: null, con_goce: true, archivo_ruta: null, creado_at: "2026-07-01T10:00:00Z", anulado: false },
+  { id: "k3", empresa_id: "emp", empleado_id: "e2", categoria: "nota", tipo: "nota", fecha_inicio: "2026-05-01", titulo: "Nota de otro empleado", creado_at: "2026-05-01T10:00:00Z", anulado: false },
+];
+location.hash = "#/kardex?empleado=e1";
+window.dispatchEvent(new dom.window.Event("hashchange"));
+await esperar(120);
+t = texto();
+assert.match(t, /Kárdex/);
+assert.match(t, /Aumento por desempeño/);
+assert.match(t, /\$230 → \$260/);
+assert.match(t, /Vacaciones de verano/);
+assert.match(t, /5 días/);
+assert.ok(!/Nota de otro empleado/.test(t), "solo el kárdex del empleado elegido");
+assert.equal(document.querySelector('.nav a[aria-current="page"]')?.dataset.ruta, "historial", "el Kárdex resalta Historial en el menú");
+
+const botonK = (txt) => [...document.querySelectorAll("button")].find((b) => b.textContent.includes(txt));
+const enviarK = () => document.querySelector("form").dispatchEvent(new dom.window.Event("submit", { cancelable: true, bubbles: true }));
+botonK("Agregar al kárdex").click();
+await esperar();
+document.getElementById("ke-cat").value = "incidencia"; document.getElementById("ke-cat").dispatchEvent(new dom.window.Event("change"));
+document.getElementById("ke-tipo").value = "permiso";
+document.getElementById("ke-titulo").value = "x";
+document.getElementById("ke-fecha").value = "2026-11-10";
+enviarK(); await esperar();
+assert.match(texto(), /título corto/, "valida el título");
+document.getElementById("ke-titulo").value = "Cita médica";
+document.getElementById("ke-fin").value = "2026-11-11";
+document.getElementById("ke-goce").value = "si";
+enviarK(); await esperar(120);
+let insK = llamadas.filter((c) => c[0] === "insert" && c[1] === "kardex_eventos").at(-1);
+assert.ok(insK, "se guardó el evento");
+assert.equal(insK[2].empleado_id, "e1"); assert.equal(insK[2].categoria, "incidencia"); assert.equal(insK[2].tipo, "permiso");
+assert.equal(insK[2].fecha_fin, "2026-11-11"); assert.equal(insK[2].con_goce, true); assert.equal(insK[2].creado_por, "u1");
+assert.match(texto(), /Cita médica/);
+
+// documento con archivo
+botonK("Agregar al kárdex").click(); await esperar();
+document.getElementById("ke-cat").value = "documento"; document.getElementById("ke-cat").dispatchEvent(new dom.window.Event("change"));
+document.getElementById("ke-titulo").value = "Contrato firmado";
+enviarK(); await esperar();
+assert.match(texto(), /Elige el archivo/);
+const pdf = new dom.window.File(["%PDF-1.4"], "contrato.pdf", { type: "application/pdf" });
+Object.defineProperty(document.getElementById("ke-archivo"), "files", { value: [pdf], configurable: true });
+globalThis.crypto ??= dom.window.crypto;
+enviarK(); await esperar(150);
+const sube = llamadas.find((c) => c[0] === "upload");
+assert.ok(sube && sube[1] === "kardex" && /^emp\/e1\/[0-9a-f-]{36}\.pdf$/.test(sube[2]), "sube al bucket kardex con ruta empresa/empleado/uuid.pdf");
+insK = llamadas.filter((c) => c[0] === "insert" && c[1] === "kardex_eventos").at(-1);
+assert.equal(insK[2].archivo_ruta, sube[2]); assert.equal(insK[2].archivo_mime, "application/pdf"); assert.equal(insK[2].categoria, "documento");
+
+// anular (dos pasos, con motivo)
+const anular = [...document.querySelectorAll("button")].find((b) => b.textContent === "Anular");
+anular.click(); await esperar();
+botonK("Anular evento").click(); await esperar();
+assert.match(texto(), /Escribe el motivo/);
+document.querySelector('textarea[aria-label="Motivo de la anulación"]').value = "Capturado por error";
+botonK("Anular evento").click(); await esperar();
+assert.ok(!llamadas.some((c) => c[0] === "update" && c[1] === "kardex_eventos"), "el primer clic solo pide confirmar");
+botonK("Confirmar anulación").click(); await esperar(120);
+const updK = llamadas.find((c) => c[0] === "update" && c[1] === "kardex_eventos");
+assert.ok(updK && updK[2].anulado === true && updK[2].motivo_anulacion === "Capturado por error" && updK[2].anulado_por === "u1");
+console.log("OK Kárdex: ver, agregar incidencia, subir documento con ruta segura y anular con motivo");
+
+// Equipo enlaza al kárdex
+location.hash = "#/equipo"; window.dispatchEvent(new dom.window.Event("hashchange")); await esperar(100);
+document.querySelector("button.fila").click(); await esperar();
+assert.ok([...document.querySelectorAll("a")].some((a) => /#\/kardex\?empleado=/.test(a.getAttribute("href") ?? "")), "Equipo enlaza al Kárdex");
+console.log("OK Equipo: enlace al Kárdex del empleado");
 
 // 6. Texto de la base no se interpreta como HTML
 datos.empleados.push({ empresa_id: "emp", id: "e9", nombre: '<img src=x onerror="window.pwned=1">', telefono: "+523300000000", estado: "activo", sede_id: "s1" });
