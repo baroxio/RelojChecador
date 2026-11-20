@@ -2,7 +2,7 @@
 
 Control de asistencia por WhatsApp para empresas mexicanas. El empleado registra entrada, salida y pausas desde su WhatsApp (con ubicación y selfie); el dueño o supervisor lo ve y lo corrige en un panel web instalable.
 
-Versión del panel: **2.1.0**. Actualizado: 2026-11-20. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
+Versión del panel: **2.1.2**. Actualizado: 2026-11-20. Este documento resume cómo está armado hoy; el detalle de cada parte está en los documentos enlazados al final.
 
 ![Mapa de tecnologías](img/mapa-tecnologias.svg)
 
@@ -66,7 +66,7 @@ Pestaña **Kárdex** junto a Historial (`#/kardex?empleado=ID`; también el bot�
 - **Historia laboral:** alta, baja, reingreso, cambio de puesto, sede, horario o sueldo (con «antes → después»).
 - **Incidencias y ausencias:** falta, retardo, permiso, incapacidad, vacaciones, día económico; con rango de fechas y con o sin goce de sueldo. Arriba se ve el resumen del año (faltas, retardos, permisos, días de vacaciones e incapacidad).
 - **Notas y sanciones:** nota, llamada de atención, acta administrativa, reconocimiento.
-- **Documentos:** contrato, identificación, CURP, RFC, NSS, comprobante de domicilio, certificado médico u otro; PDF o imagen de hasta 10 MB, guardados en el bucket privado `kardex` (ruta `empresa/empleado/uuid.ext`) y abiertos con enlaces firmados de 5 minutos.
+- **Documentos:** contrato, identificación, CURP, RFC, NSS, comprobante de domicilio, certificado médico u otro; PDF o imagen de hasta 10 MB (también con la cámara del teléfono), guardados en el bucket privado `kardex` (ruta `empresa/empleado/uuid.ext`) y abiertos con enlaces firmados de 5 minutos.
 
 La línea de tiempo suma, sin duplicar, lo que el sistema ya sabía: fecha de ingreso, fecha de baja y asignaciones de horario (marcados «Automático»). Dueño, administrador y supervisor (solo de sus sedes) ven y agregan; **solo dueño y administrador anulan**, con motivo. Los eventos son inmutables (un trigger bloquea editar y borrar; solo se puede marcar «anulado»), y toda acción queda en `bitacora`. El rol «consulta» no ve el kárdex por llevar datos sensibles. Requiere la migración `20261120000100_kardex_empleado.sql`.
 
@@ -144,6 +144,8 @@ La versión se ve en el panel, en **Cuenta → Versión de la aplicación**, y v
 
 | Versión | Fecha | Qué trae |
 |---|---|---|
+| **2.1.2** | 2026-11-20 | Kárdex: la cámara ahora se abre dentro de la página (vista en vivo y botón «Capturar»), así funciona también en computadora; en la 2.1.1 solo abría el selector de archivos en Chrome de escritorio. Si el navegador no ofrece cámara, se usa el selector con captura. |
+| **2.1.1** | 2026-11-20 | Kárdex: al subir un documento se puede **tomar la foto con la cámara** del dispositivo (además de elegir un PDF o imagen). |
 | **2.1.0** | 2026-11-20 | **Kárdex por empleado:** historia laboral, incidencias y ausencias, notas y sanciones, y documentos (PDF o imagen) con anulación auditada. Tabla `kardex_eventos`, bucket `kardex` y migración `20261120000100`. |
 | **2.0.3** | 2026-11-15 | Arreglo: «Versión de la aplicación» en Cuenta ya no se queda en «desconocida» tras una recarga forzada (se la pide al service worker aunque no controle la página y, si no contesta, la lee de `sw.js`). |
 | **2.0.2** | 2026-11-15 | Arreglos: la pantalla Cuenta mostraba la palabra «null» cuando solo hay una empresa; y el service worker ahora pide sus archivos a la red al actualizar (antes podía guardar copias viejas que el navegador ya tenía). |

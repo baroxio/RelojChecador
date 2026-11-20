@@ -562,6 +562,40 @@ assert.ok(sube && sube[1] === "kardex" && /^emp\/e1\/[0-9a-f-]{36}\.pdf$/.test(s
 insK = llamadas.filter((c) => c[0] === "insert" && c[1] === "kardex_eventos").at(-1);
 assert.equal(insK[2].archivo_ruta, sube[2]); assert.equal(insK[2].archivo_mime, "application/pdf"); assert.equal(insK[2].categoria, "documento");
 
+// documento con foto de la cámara
+botonK("Agregar al kárdex").click(); await esperar();
+document.getElementById("ke-cat").value = "documento"; document.getElementById("ke-cat").dispatchEvent(new dom.window.Event("change"));
+document.getElementById("ke-titulo").value = "INE frente";
+assert.equal(document.getElementById("ke-foto").getAttribute("capture"), "environment", "abre la cámara trasera");
+assert.match(document.getElementById("ke-foto").accept, /image/);
+assert.ok(document.getElementById("ke-camara"), "botón Tomar foto");
+const jpg = new dom.window.File([new Uint8Array(2048)], "IMG_001.jpg", { type: "image/jpeg" });
+Object.defineProperty(document.getElementById("ke-foto"), "files", { value: [jpg], configurable: true });
+document.getElementById("ke-foto").dispatchEvent(new dom.window.Event("change"));
+assert.match(document.getElementById("ke-elegido").textContent, /IMG_001\.jpg/);
+enviarK(); await esperar(150);
+const subeFoto = llamadas.filter((c) => c[0] === "upload").at(-1);
+assert.ok(/\.jpg$/.test(subeFoto[2]) && subeFoto[3].contentType === "image/jpeg", "sube la foto como JPEG");
+console.log("OK Kárdex: documento con foto de la cámara");
+
+// cámara en vivo: permiso denegado muestra mensaje; con cámara muestra la vista y se detiene
+botonK("Agregar al kárdex").click(); await esperar();
+document.getElementById("ke-cat").value = "documento"; document.getElementById("ke-cat").dispatchEvent(new dom.window.Event("change"));
+let pistasDetenidas = 0;
+Object.defineProperty(globalThis.navigator, "mediaDevices", { value: { getUserMedia: async () => { throw Object.assign(new Error("x"), { name: "NotAllowedError" }); } }, configurable: true });
+document.getElementById("ke-camara").click(); await esperar();
+assert.match(texto(), /no tiene permiso para usar la cámara/);
+globalThis.navigator.mediaDevices.getUserMedia = async () => ({ getTracks: () => [{ stop: () => { pistasDetenidas += 1; } }] });
+document.getElementById("ke-camara").click(); await esperar();
+assert.ok(document.querySelector('video[aria-label="Vista de la cámara"]'), "muestra la vista en vivo");
+assert.ok(document.getElementById("ke-capturar"), "botón Capturar");
+[...document.querySelectorAll("button")].find((b) => b.textContent === "Cerrar cámara").click();
+assert.equal(pistasDetenidas, 1, "al cerrar se apaga la cámara");
+assert.equal(document.querySelector("video"), null);
+delete globalThis.navigator.mediaDevices;
+botonK("Cancelar").click(); await esperar();
+console.log("OK Kárdex: cámara en vivo (permiso, vista, capturar y apagado)");
+
 // anular (dos pasos, con motivo)
 const anular = [...document.querySelectorAll("button")].find((b) => b.textContent === "Anular");
 anular.click(); await esperar();

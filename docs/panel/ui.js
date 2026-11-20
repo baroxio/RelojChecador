@@ -1545,9 +1545,57 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
       const cFin = h("div", { class: "campo" }, h("label", { for: "ke-fin" }, "Hasta (opcional)"), fechaFin);
       const cGoce = h("div", { class: "campo" }, h("label", { for: "ke-goce" }, "Sueldo"), goce);
       const cCambio = h("div", { class: "cuadricula cuadricula--2" }, h("div", { class: "campo" }, h("label", { for: "ke-antes" }, "Antes"), antes), h("div", { class: "campo" }, h("label", { for: "ke-despues" }, "Después"), despues));
-      const cArchivo = h("div", { class: "campo" }, h("label", { for: "ke-archivo" }, "Archivo (PDF o imagen, máx. 10 MB)"), archivo);
+      // Dos formas de dar el documento: elegir un archivo (PDF o imagen) o tomar la foto con la cámara del dispositivo.
+      const foto = h("input", { id: "ke-foto", type: "file", accept: "image/*", capture: "environment", hidden: true, "aria-label": "Tomar foto del documento" });
+      const nombreElegido = h("div", { class: "nota", id: "ke-elegido", role: "status" }, "Ningún archivo elegido.");
+      const visorCamara = h("div", {});
+      const vistaFoto = h("div", {});
+      let fotoTomada = null; // foto sacada con la cámara en vivo
+      const archivoElegido = () => fotoTomada ?? foto.files?.[0] ?? archivo.files?.[0] ?? null;
+      const mostrarElegido = () => { const f = archivoElegido(); nombreElegido.textContent = f ? `Elegido: ${f.name || "foto"} (${Math.max(1, Math.round(f.size / 1024))} KB)` : "Ningún archivo elegido."; };
+      archivo.addEventListener("change", () => { fotoTomada = null; vistaFoto.replaceChildren(); try { foto.value = ""; } catch { /* nada */ } mostrarElegido(); });
+      foto.addEventListener("change", () => { fotoTomada = null; vistaFoto.replaceChildren(); try { archivo.value = ""; } catch { /* nada */ } mostrarElegido(); });
+      const cArchivo = h("div", { class: "campo" },
+        h("label", { for: "ke-archivo" }, "Documento (PDF o imagen, máx. 10 MB)"), archivo,
+        h("div", { class: "formulario__acciones", style: "margin-top:.4rem" },
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", id: "ke-camara", onclick: () => tomarFoto() }, icono("camara"), "Tomar foto con la cámara")),
+        visorCamara, foto, vistaFoto, nombreElegido);
       const error = h("div", { class: "error-campo", role: "alert", hidden: true });
       const guardar = h("button", { class: "boton boton--primario", type: "submit" }, "Guardar en el kárdex");
+      // Cámara en vivo (sirve en computadora y en teléfono). Si el navegador no la ofrece, se usa el selector con captura.
+      let flujo = null;
+      function detenerCamara() { flujo?.getTracks().forEach((t) => t.stop()); flujo = null; visorCamara.replaceChildren(); window.removeEventListener("hashchange", detenerCamara); }
+      async function tomarFoto() {
+        error.hidden = true;
+        if (!navigator.mediaDevices?.getUserMedia) { foto.click(); return; }
+        detenerCamara();
+        try {
+          flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        } catch (err) {
+          error.textContent = err?.name === "NotAllowedError" ? "El navegador no tiene permiso para usar la cámara. Permítela en el candado de la barra de direcciones, o elige un archivo."
+            : err?.name === "NotFoundError" ? "No se encontró ninguna cámara en este dispositivo. Elige un archivo."
+            : "No se pudo abrir la cámara. Elige un archivo.";
+          error.hidden = false; return;
+        }
+        window.addEventListener("hashchange", detenerCamara);
+        const video = h("video", { autoplay: true, playsinline: true, muted: true, style: "width:100%; max-width:34rem; border-radius:.5rem; background:#000", "aria-label": "Vista de la cámara" });
+        video.srcObject = flujo; video.muted = true;
+        const capturar = h("button", { class: "boton boton--primario boton--chico", type: "button", id: "ke-capturar", onclick: () => {
+          if (!video.videoWidth) { error.textContent = "La cámara aún no está lista; espera un segundo."; error.hidden = false; return; }
+          const lienzo = document.createElement("canvas");
+          lienzo.width = video.videoWidth; lienzo.height = video.videoHeight;
+          lienzo.getContext("2d").drawImage(video, 0, 0);
+          lienzo.toBlob((blob) => {
+            if (!blob) { error.textContent = "No se pudo tomar la foto. Intenta de nuevo."; error.hidden = false; return; }
+            fotoTomada = new File([blob], `foto-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.jpg`, { type: "image/jpeg" });
+            try { archivo.value = ""; foto.value = ""; } catch { /* nada */ }
+            vistaFoto.replaceChildren(h("img", { src: URL.createObjectURL(fotoTomada), alt: "Foto tomada", style: "max-width:14rem; border-radius:.5rem; margin-top:.4rem" }));
+            detenerCamara(); mostrarElegido();
+          }, "image/jpeg", 0.85);
+        } }, icono("camara"), "Capturar");
+        visorCamara.replaceChildren(video, h("div", { class: "formulario__acciones", style: "margin-top:.4rem" }, capturar,
+          h("button", { class: "boton boton--secundario boton--chico", type: "button", onclick: detenerCamara }, "Cerrar cámara")));
+      }
       function ajustar() {
         tipo.replaceChildren(...Object.entries(TIPOS_KARDEX[cat.value]).map(([v, t]) => h("option", { value: v }, t)));
         if (cat.value === "incidencia") tipo.value = "falta";
@@ -1563,7 +1611,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         onsubmit: async (ev) => {
           ev.preventDefault(); error.hidden = true;
           const falla = (t) => { error.textContent = t; error.hidden = false; };
-          const f = archivo.files?.[0] ?? null;
+          const f = archivoElegido();
           const { errores, valores } = validarEventoKardex({
             categoria: cat.value, tipo: tipo.value, fecha_inicio: fecha.value, fecha_fin: cFin.hidden ? "" : fechaFin.value, titulo: titulo.value, detalle: detalle.value,
             valor_anterior: antes.value, valor_nuevo: despues.value, con_goce: goce.value === "si" ? true : goce.value === "no" ? false : null,
@@ -1571,6 +1619,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
           const primero = Object.values(errores)[0];
           if (primero) return falla(primero);
           guardar.disabled = true; guardar.setAttribute("aria-busy", "true");
+          detenerCamara();
           try {
             const carga = { ...valores, empresa_id: estado.miembro.empresa_id, empleado_id: empleadoId, creado_por: estado.sesion.user.id };
             if (cat.value === "documento") {
@@ -1593,7 +1642,7 @@ export function iniciarApp({ sb, url, key, raiz, avisos }) {
         h("div", { class: "campo" }, h("label", { for: "ke-detalle" }, "Detalle"), detalle),
         cArchivo, error,
         h("div", { class: "formulario__acciones" }, guardar,
-          h("button", { class: "boton boton--secundario", type: "button", onclick: () => espacioForm.replaceChildren() }, "Cancelar")));
+          h("button", { class: "boton boton--secundario", type: "button", onclick: () => { detenerCamara(); espacioForm.replaceChildren(); } }, "Cancelar")));
       espacioForm.replaceChildren(form);
       titulo.focus();
     }
